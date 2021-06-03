@@ -1,0 +1,43 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.31205.134
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Artemis.Plugins.HardwareMonitors.Aida64", "Artemis.Plugins.HardwareMonitors.Aida64\Artemis.Plugins.HardwareMonitors.Aida64.csproj", "{D68B40E0-9E7C-48E9-A218-F03BD53306C6}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Artemis.Plugins.HardwareMonitors.OpenHardwareMonitor", "Artemis.Plugins.HardwareMonitors.OpenHardwareMonitor\Artemis.Plugins.HardwareMonitors.OpenHardwareMonitor.csproj", "{E417A215-2A0F-4597-85C1-81508974FDF1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Artemis.Plugins.HardwareMonitors.HWiNFO64", "Artemis.Plugins.HardwareMonitors.HWiNFO64\Artemis.Plugins.HardwareMonitors.HWiNFO64.csproj", "{AC721ABF-61A1-40D2-BB7F-6D48DAAC152B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Artemis.Plugins.HardwareMonitors.Standalone", "Artemis.Plugins.HardwareMonitors.Standalone\Artemis.Plugins.HardwareMonitors.Standalone.csproj", "{E36606E5-555D-43ED-B40C-BA4A9FC08EC8}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D68B40E0-9E7C-48E9-A218-F03BD53306C6}.Debug|x64.ActiveCfg = Debug|x64
+		{D68B40E0-9E7C-48E9-A218-F03BD53306C6}.Debug|x64.Build.0 = Debug|x64
+		{D68B40E0-9E7C-48E9-A218-F03BD53306C6}.Release|x64.ActiveCfg = Release|x64
+		{D68B40E0-9E7C-48E9-A218-F03BD53306C6}.Release|x64.Build.0 = Release|x64
+		{E417A215-2A0F-4597-85C1-81508974FDF1}.Debug|x64.ActiveCfg = Debug|x64
+		{E417A215-2A0F-4597-85C1-81508974FDF1}.Debug|x64.Build.0 = Debug|x64
+		{E417A215-2A0F-4597-85C1-81508974FDF1}.Release|x64.ActiveCfg = Release|x64
+		{E417A215-2A0F-4597-85C1-81508974FDF1}.Release|x64.Build.0 = Release|x64
+		{AC721ABF-61A1-40D2-BB7F-6D48DAAC152B}.Debug|x64.ActiveCfg = Debug|x64
+		{AC721ABF-61A1-40D2-BB7F-6D48DAAC152B}.Debug|x64.Build.0 = Debug|x64
+		{AC721ABF-61A1-40D2-BB7F-6D48DAAC152B}.Release|x64.ActiveCfg = Release|x64
+		{AC721ABF-61A1-40D2-BB7F-6D48DAAC152B}.Release|x64.Build.0 = Release|x64
+		{E36606E5-555D-43ED-B40C-BA4A9FC08EC8}.Debug|x64.ActiveCfg = Debug|x64
+		{E36606E5-555D-43ED-B40C-BA4A9FC08EC8}.Debug|x64.Build.0 = Debug|x64
+		{E36606E5-555D-43ED-B40C-BA4A9FC08EC8}.Release|x64.ActiveCfg = Release|x64
+		{E36606E5-555D-43ED-B40C-BA4A9FC08EC8}.Release|x64.Build.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {0F8CA947-05BC-4083-AC4C-6CBB13BC7CC0}
+	EndGlobalSection
+EndGlobal
