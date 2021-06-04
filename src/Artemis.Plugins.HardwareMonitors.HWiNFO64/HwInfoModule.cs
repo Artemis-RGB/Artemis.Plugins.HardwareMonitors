@@ -91,7 +91,7 @@ namespace Artemis.Plugins.HardwareMonitors.HWiNFO64
                     _timedUpdate = AddTimedUpdate(TimeSpan.FromMilliseconds(_hwInfoRoot.PollingPeriod), UpdateSensorsAndDataModel, nameof(UpdateSensorsAndDataModel));
 
                     started = true;
-                    _logger.Error("Started HWiNFO64 memory reader successfully");
+                    _logger.Information("Started HWiNFO64 memory reader successfully");
                     return;
                 }
                 catch
