@@ -1,0 +1,69 @@
+name: Build Plugins
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: [windows-latest]
+
+    steps:
+      - name: Setup .NET 5.0
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: '5.0.x'
+
+      - name: Clone RGB.NET
+        uses: actions/checkout@v2
+        with:
+          repository: DarthAffe/RGB.NET
+          path: RGB.NET
+          ref: Development
+
+      - name: Build RGB.NET
+        run: dotnet build .\RGB.NET\RGB.NET.Core\RGB.NET.Core.csproj
+      - run: dotnet build .\RGB.NET\RGB.NET.Layout\RGB.NET.Layout.csproj
+      - run: dotnet build .\RGB.NET\RGB.NET.Presets\RGB.NET.Presets.csproj
+
+      - name: Clone Artemis
+        uses: actions/checkout@v2
+        with:
+          repository: Artemis-RGB/Artemis
+          path: Artemis
+
+      - name: Build Artemis
+        run: dotnet build .\Artemis\src\Artemis.sln
+
+      - name: Clone Plugins
+        uses: actions/checkout@v2
+        with:
+          path: Plugins
+
+      - name: Build Plugins
+        run: dotnet publish -c Release .\Plugins\src\Artemis.Plugins.HardwareMonitors.sln
+
+        #msbuild is dumb so we have to upload one at a time :)
+        #https://github.com/dotnet/sdk/issues/7238
+
+      - name: Upload Aida64
+        uses: actions/upload-artifact@v2
+        with:
+          name: Aida64
+          path: .\Plugins\src\Artemis.Plugins.HardwareMonitors.Aida64\bin\x64\Release\net5.0-windows\publish
+
+      - name: Upload HWiNFO64
+        uses: actions/upload-artifact@v2
+        with:
+          name: HWiNFO64
+          path: .\Plugins\src\Artemis.Plugins.HardwareMonitors.HWiNFO64\bin\x64\Release\net5.0-windows\publish
+
+      - name: Upload OpenHardwareMonitor
+        uses: actions/upload-artifact@v2
+        with:
+          name: Aida64
+          path: .\Plugins\src\Artemis.Plugins.HardwareMonitors.OpenHardwareMonitor\bin\x64\Release\net5.0-windows\publish
+
+      - name: Upload Standalone
+        uses: actions/upload-artifact@v2
+        with:
+          name: Aida64
+          path: .\Plugins\src\Artemis.Plugins.HardwareMonitors.Standalone\bin\x64\Release\net5.0-windows\publish
