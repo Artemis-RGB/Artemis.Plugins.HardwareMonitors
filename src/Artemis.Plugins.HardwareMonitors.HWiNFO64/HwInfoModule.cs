@@ -6,20 +6,26 @@ using System.IO.MemoryMappedFiles;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.IO;
+using Artemis.Core.Modules;
+using Serilog;
+using System.Threading;
+using Artemis.Core;
 
 namespace Artemis.Plugins.HardwareMonitors.HWiNFO64
 {
-    public class HwInfoDataModelExpansion : DataModelExpansion<HwInfoDataModel>
+    public class HwInfoModule : Module<HwInfoDataModel>
     {
         private const string SHARED_MEMORY = @"Global\HWiNFO_SENS_SM2";
         private static readonly int sizeOfHwInfoRoot = Marshal.SizeOf<HwInfoRoot>();
         private static readonly int sizeOfHwInfoHardware = Marshal.SizeOf<HwInfoHardware>();
         private static readonly int sizeOfHwInfoSensor = Marshal.SizeOf<HwInfoSensor>();
+        private readonly ILogger _logger;
 
         private MemoryMappedFile _memoryMappedFile;
         private MemoryMappedViewStream _rootStream;
         private MemoryMappedViewStream _hardwareStream;
         private MemoryMappedViewStream _sensorStream;
+        private TimedUpdateRegistration _timedUpdate;
 
         private HwInfoRoot _hwInfoRoot;
         private HwInfoHardware[] _hardwares;
@@ -30,50 +36,76 @@ namespace Artemis.Plugins.HardwareMonitors.HWiNFO64
         private readonly byte[] _hardwareBuffer = new byte[sizeOfHwInfoHardware];
         private readonly byte[] _sensorBuffer = new byte[sizeOfHwInfoSensor];
 
-        public override void Enable()
+        public HwInfoModule(ILogger logger)
         {
-            try
-            {
-                _memoryMappedFile = MemoryMappedFile.OpenExisting(SHARED_MEMORY, MemoryMappedFileRights.Read);
+            _logger = logger;
 
-                _rootStream = _memoryMappedFile.CreateViewStream(
-                    0,
-                    sizeOfHwInfoRoot,
-                    MemoryMappedFileAccess.Read);
-
-                var hwinfoRootBytes = new byte[sizeOfHwInfoRoot];
-                _rootStream.Read(hwinfoRootBytes, 0, sizeOfHwInfoRoot);
-                _hwInfoRoot = BytesToStruct<HwInfoRoot>(hwinfoRootBytes);
-
-                _hardwareStream = _memoryMappedFile.CreateViewStream(
-                    _hwInfoRoot.HardwareSectionOffset,
-                    _hwInfoRoot.HardwareCount * sizeOfHwInfoHardware,
-                    MemoryMappedFileAccess.Read);
-
-                _sensorStream = _memoryMappedFile.CreateViewStream(
-                    _hwInfoRoot.SensorSectionOffset,
-                    _hwInfoRoot.SensorCount * sizeOfHwInfoSensor,
-                    MemoryMappedFileAccess.Read);
-            }
-            catch
-            {
-                //log failure, etc
-                throw;
-            }
-
-            _hardwares = new HwInfoHardware[_hwInfoRoot.HardwareCount];
-            _sensors = new HwInfoSensor[_hwInfoRoot.SensorCount];
-
-            UpdateHardwares();
-
-            UpdateSensors();
-
-            PopulateDynamicDataModels();
-
-            AddTimedUpdate(TimeSpan.FromMilliseconds(_hwInfoRoot.PollingPeriod), UpdateSensorsAndDataModel, nameof(UpdateSensorsAndDataModel));
+            ActivationRequirements.Add(new ProcessActivationRequirement("HWiNFO64"));
+            UpdateDuringActivationOverride = false;
         }
 
-        public override void Disable()
+        public override void ModuleActivated(bool isOverride)
+        {
+            if (isOverride)
+                return;
+
+            const int maxRetries = 10;
+            bool started = false;
+
+            for (int i = 0; i < maxRetries; i++)
+            {
+                try
+                {
+                    _memoryMappedFile = MemoryMappedFile.OpenExisting(SHARED_MEMORY, MemoryMappedFileRights.Read);
+
+                    _rootStream = _memoryMappedFile.CreateViewStream(
+                        0,
+                        sizeOfHwInfoRoot,
+                        MemoryMappedFileAccess.Read);
+
+                    var hwinfoRootBytes = new byte[sizeOfHwInfoRoot];
+                    _rootStream.Read(hwinfoRootBytes, 0, sizeOfHwInfoRoot);
+                    _hwInfoRoot = BytesToStruct<HwInfoRoot>(hwinfoRootBytes);
+
+                    _hardwareStream = _memoryMappedFile.CreateViewStream(
+                        _hwInfoRoot.HardwareSectionOffset,
+                        _hwInfoRoot.HardwareCount * sizeOfHwInfoHardware,
+                        MemoryMappedFileAccess.Read);
+
+                    _sensorStream = _memoryMappedFile.CreateViewStream(
+                        _hwInfoRoot.SensorSectionOffset,
+                        _hwInfoRoot.SensorCount * sizeOfHwInfoSensor,
+                        MemoryMappedFileAccess.Read);
+
+                    _hardwares = new HwInfoHardware[_hwInfoRoot.HardwareCount];
+                    _sensors = new HwInfoSensor[_hwInfoRoot.SensorCount];
+
+                    UpdateHardwares();
+
+                    UpdateSensors();
+
+                    PopulateDynamicDataModels();
+
+                    if (_timedUpdate != null)
+                        _timedUpdate?.Dispose();
+                    _timedUpdate = AddTimedUpdate(TimeSpan.FromMilliseconds(_hwInfoRoot.PollingPeriod), UpdateSensorsAndDataModel, nameof(UpdateSensorsAndDataModel));
+
+                    started = true;
+                    _logger.Error("Started HWiNFO64 memory reader successfully");
+                    return;
+                }
+                catch
+                {
+                    _logger.Error("Failed to start HWiNFO64 memory reader. Retrying...");
+                    Thread.Sleep(500);
+                }
+            }
+
+            if (!started)
+                throw new ArtemisPluginException("Could not find the HWiNFO64 memory mapped file");
+        }
+
+        public override void ModuleDeactivated(bool isOverride)
         {
             _memoryMappedFile?.Dispose();
             _rootStream?.Dispose();
@@ -84,6 +116,10 @@ namespace Artemis.Plugins.HardwareMonitors.HWiNFO64
             _hardwares = null;
             _sensors = null;
         }
+
+        public override void Enable() { }
+
+        public override void Disable() { }
 
         public override void Update(double deltaTime)
         {

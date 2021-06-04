@@ -5,34 +5,31 @@ namespace Artemis.Plugins.HardwareMonitors.OpenHardwareMonitor
 {
     public class Hardware
     {
-        public string InstanceId { get; set; }
-        public string ProcessId { get; set; }
         public string Identifier { get; set; }
         public string Name { get; set; }
-        public string Parent { get; set; }
         public HardwareType HardwareType { get; set; }
 
-        public Hardware(ManagementBaseObject obj)
+        public static Hardware FromManagementObject(ManagementBaseObject obj)
         {
-            InstanceId = (string)obj["InstanceId"];
-            ProcessId = (string)obj["ProcessId"];
-            Identifier = (string)obj["Identifier"];
-            Name = (string)obj["Name"];
-            Parent = (string)obj["Parent"];
-            HardwareType = GetHardwareType((string)obj["HardwareType"]);
+            return new Hardware
+            {
+                Identifier = (string)obj[nameof(Identifier)],
+                Name = (string)obj[nameof(Name)],
+                HardwareType = GetHardwareType((string)obj[nameof(HardwareType)]),
+            };
         }
 
         public static List<Hardware> FromCollection(ManagementObjectCollection collection)
         {
-            List<Hardware> list = new List<Hardware>(collection.Count);
+            List<Hardware> list = new(collection.Count);
 
             foreach (ManagementBaseObject obj in collection)
-                list.Add(new Hardware(obj));
+                list.Add(FromManagementObject(obj));
 
             return list;
         }
 
-        private HardwareType GetHardwareType(string name)
+        private static HardwareType GetHardwareType(string name)
         {
             return name.ToLower() switch
             {

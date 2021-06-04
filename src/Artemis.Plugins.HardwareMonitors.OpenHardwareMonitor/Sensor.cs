@@ -6,10 +6,7 @@ namespace Artemis.Plugins.HardwareMonitors.OpenHardwareMonitor
 {
     public class Sensor : IComparable
     {
-        public string InstanceId { get; set; }
-        public string ProcessId { get; set; }
         public string Identifier { get; set; }
-        public int Index { get; set; }
         public float Min { get; set; }
         public float Max { get; set; }
         public float Value { get; set; }
@@ -17,27 +14,38 @@ namespace Artemis.Plugins.HardwareMonitors.OpenHardwareMonitor
         public string Parent { get; set; }
         public SensorType SensorType { get; set; }
 
-        public Sensor(ManagementBaseObject obj)
+        public static Sensor FromManagementObject(ManagementBaseObject obj)
         {
-            InstanceId = (string)obj["InstanceId"];
-            ProcessId = (string)obj["ProcessId"];
-            Identifier = (string)obj["Identifier"];
-            Index = (int)obj["Index"];
-            Min = (float)obj["Min"];
-            Max = (float)obj["Max"];
-            Value = (float)obj["Value"];
-            Name = (string)obj["Name"];
-            Parent = (string)obj["Parent"];
-            SensorType = Enum.Parse<SensorType>((string)obj["SensorType"]);
+            return new Sensor
+            {
+                Identifier = (string)obj[nameof(Identifier)],
+                Min = (float)obj[nameof(Min)],
+                Max = (float)obj[nameof(Max)],
+                Value = (float)obj[nameof(Value)],
+                Name = (string)obj[nameof(Name)],
+                Parent = (string)obj[nameof(Parent)],
+                SensorType = Enum.Parse<SensorType>((string)obj[nameof(SensorType)])
+            };
+        }
+
+        public static Sensor FromManagementObjectFast(ManagementBaseObject obj)
+        {
+            return new Sensor
+            {
+                Identifier = (string)obj[nameof(Identifier)],
+                Min = (float)obj[nameof(Min)],
+                Max = (float)obj[nameof(Max)],
+                Value = (float)obj[nameof(Value)]
+            };
         }
 
         public static List<Sensor> FromCollection(ManagementObjectCollection collection)
         {
-            List<Sensor> list = new List<Sensor>(collection.Count);
+            List<Sensor> list = new(collection.Count);
 
             foreach (ManagementBaseObject obj in collection)
             {
-                Sensor sensor = new Sensor(obj);
+                Sensor sensor = FromManagementObject(obj);
                 if (sensor.SensorType != SensorType.Control)
                 {
                     list.Add(sensor);
@@ -47,20 +55,12 @@ namespace Artemis.Plugins.HardwareMonitors.OpenHardwareMonitor
             return list;
         }
 
-        public static Dictionary<string, Sensor> GetDictionary(ManagementObjectCollection collection)
+        public static IEnumerable<Sensor> FromCollectionFast(ManagementObjectCollection collection)
         {
-            Dictionary<string, Sensor> dict = new Dictionary<string, Sensor>();
-
-            foreach (ManagementBaseObject obj in collection)
+            foreach (var item in collection)
             {
-                Sensor sensor = new Sensor(obj);
-                if (sensor.SensorType != SensorType.Control)
-                {
-                    dict.Add(sensor.Identifier, sensor);
-                }
+                yield return FromManagementObjectFast(item);
             }
-
-            return dict;
         }
 
         public override string ToString() => $"{Identifier} : {Value}";

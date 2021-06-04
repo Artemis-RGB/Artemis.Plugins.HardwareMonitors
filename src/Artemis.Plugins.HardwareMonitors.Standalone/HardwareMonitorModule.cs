@@ -4,13 +4,19 @@ using System;
 using System.Security.Principal;
 using LibreHardwareMonitor.Hardware;
 using System.Linq;
+using Artemis.Core.Modules;
 
 namespace Artemis.Plugins.HardwareMonitors.Standalone
 {
-    public class HardwareMonitorDataModelExpansion : DataModelExpansion<HardwareMonitorDataModel>
+    public class HardwareMonitorModule : Module<HardwareMonitorDataModel>
     {
         private Computer _computer;
-        private readonly UpdateVisitor _visitor = new UpdateVisitor();
+        private readonly UpdateVisitor _visitor = new();
+
+        public HardwareMonitorModule()
+        {
+            AddTimedUpdate(TimeSpan.FromSeconds(1), UpdateHarware, nameof(UpdateHarware));
+        }
 
         public override void Enable()
         {
@@ -31,7 +37,6 @@ namespace Artemis.Plugins.HardwareMonitors.Standalone
             _computer.Open();
 
             UpdateDynamicDataModels();
-            AddTimedUpdate(TimeSpan.FromSeconds(1), UpdateHarware, nameof(UpdateHarware));
         }
 
         public override void Disable()

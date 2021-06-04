@@ -1,41 +1,78 @@
-﻿using Artemis.Core.DataModelExpansions;
+﻿using Artemis.Core;
+using Artemis.Core.DataModelExpansions;
+using Artemis.Core.Modules;
 using Artemis.Plugins.DataModelExpansions.Aida64.DataModels;
+using Serilog;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.MemoryMappedFiles;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Xml;
 
 namespace Artemis.Plugins.HardwareMonitors.Aida64
 {
-    public class Aida64DataModelExpansion : DataModelExpansion<Aida64DataModel>
+    public class Aida64Module : Module<Aida64DataModel>
     {
-        private const string SHARED_MEMORY = "AIDA64_SensorValues";
-
+        private readonly ILogger _logger;
         private MemoryMappedFile memoryMappedFile;
         private MemoryMappedViewStream rootStream;
         private List<AidaElement> _aidaElements;
 
-        public override void Enable()
+        public Aida64Module(ILogger logger)
         {
-            try
+            _logger = logger;
+
+            ActivationRequirements.Add(new ProcessActivationRequirement("aida64"));
+            UpdateDuringActivationOverride = false;
+            AddTimedUpdate(TimeSpan.FromSeconds(1), UpdateSensorsAndDataModel, nameof(UpdateSensorsAndDataModel));
+        }
+
+        public override void ModuleActivated(bool isOverride)
+        {
+            if (isOverride)
+                return;
+
+            const int maxRetries = 10;
+            bool started = false;
+
+            for (int i = 0; i < maxRetries; i++)
             {
-                memoryMappedFile = MemoryMappedFile.OpenExisting(SHARED_MEMORY, MemoryMappedFileRights.Read);
-                rootStream = memoryMappedFile.CreateViewStream(
-                    0,
-                    0,
-                    MemoryMappedFileAccess.Read);
-                _aidaElements = new List<AidaElement>();
-            }
-            catch
-            {
-                //log failure, etc
-                throw;
+                try
+                {
+                    memoryMappedFile = MemoryMappedFile.OpenExisting("AIDA64_SensorValues", MemoryMappedFileRights.Read);
+                    rootStream = memoryMappedFile.CreateViewStream(
+                        0,
+                        0,
+                        MemoryMappedFileAccess.Read);
+                    _aidaElements = new List<AidaElement>();
+                    started = true;
+                    return;
+                }
+                catch
+                {
+                    _logger.Error("Failed to start AIDA64 memory reader. Retrying...");
+                    Thread.Sleep(500);
+                }
             }
 
-            AddTimedUpdate(TimeSpan.FromSeconds(1), UpdateSensorsAndDataModel, nameof(UpdateSensorsAndDataModel));
+            if (!started)
+                throw new ArtemisPluginException("Could not find the aida64 memory mapped file");
+        }
+
+        public override void ModuleDeactivated(bool isOverride)
+        {
+            if (isOverride)
+                return;
+
+            memoryMappedFile?.Dispose();
+            rootStream?.Dispose();
+        }
+
+        public override void Enable()
+        {
         }
 
         public override void Update(double deltaTime)
@@ -44,8 +81,6 @@ namespace Artemis.Plugins.HardwareMonitors.Aida64
 
         public override void Disable()
         {
-            memoryMappedFile?.Dispose();
-            rootStream?.Dispose();
         }
 
         private void UpdateSensorsAndDataModel(double deltaTime)
