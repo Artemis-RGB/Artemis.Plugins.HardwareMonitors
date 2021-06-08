@@ -33,6 +33,10 @@ namespace Artemis.Plugins.HardwareMonitors.OpenHardwareMonitor
         {
             _logger = logger;
             ActivationRequirementMode = ActivationRequirementType.Any;
+
+            DisplayName = "Open Hardware Monitor";
+            DisplayIcon = "Chip";
+
             ActivationRequirements.Add(new ProcessActivationRequirement("OpenHardwareMonitor"));
             ActivationRequirements.Add(new ProcessActivationRequirement("LibreHardwareMonitor"));
             UpdateDuringActivationOverride = false;

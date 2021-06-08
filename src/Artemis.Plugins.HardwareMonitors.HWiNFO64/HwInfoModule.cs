@@ -40,6 +40,9 @@ namespace Artemis.Plugins.HardwareMonitors.HWiNFO64
         {
             _logger = logger;
 
+            DisplayName = "HWiNFO64";
+            DisplayIcon = "Chip";
+
             ActivationRequirements.Add(new ProcessActivationRequirement("HWiNFO64"));
             UpdateDuringActivationOverride = false;
         }

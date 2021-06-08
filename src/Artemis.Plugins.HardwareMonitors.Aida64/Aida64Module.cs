@@ -25,6 +25,9 @@ namespace Artemis.Plugins.HardwareMonitors.Aida64
         {
             _logger = logger;
 
+            DisplayName = "Aida64";
+            DisplayIcon = "Chip";
+
             ActivationRequirements.Add(new ProcessActivationRequirement("aida64"));
             UpdateDuringActivationOverride = false;
             AddTimedUpdate(TimeSpan.FromSeconds(1), UpdateSensorsAndDataModel, nameof(UpdateSensorsAndDataModel));
