@@ -10,7 +10,7 @@ using System.Threading;
 
 namespace Artemis.Plugins.HardwareMonitors.OpenHardwareMonitor
 {
-    [PluginFeature(AlwaysEnabled = true)]
+    [PluginFeature(AlwaysEnabled = true, Icon = "Chip")]
     public class HardwareMonitorModule : Module<HardwareMonitorDataModel>
     {
         private readonly ILogger _logger;
@@ -30,14 +30,16 @@ namespace Artemis.Plugins.HardwareMonitors.OpenHardwareMonitor
 
         private readonly Dictionary<string, DynamicChild<SensorDynamicDataModel>> _cache = new();
 
-        public override List<IModuleActivationRequirement> ActivationRequirements => null;
+        public override List<IModuleActivationRequirement> ActivationRequirements { get; } = new()
+        {
+            new ProcessActivationRequirement("OpenHardwareMonitor"),
+            new ProcessActivationRequirement("LibreHardwareMonitor")
+        };
 
         public HardwareMonitorModule(ILogger logger)
         {
             _logger = logger;
             ActivationRequirementMode = ActivationRequirementType.Any;
-            ActivationRequirements.Add(new ProcessActivationRequirement("OpenHardwareMonitor"));
-            ActivationRequirements.Add(new ProcessActivationRequirement("LibreHardwareMonitor"));
             UpdateDuringActivationOverride = false;
             AddTimedUpdate(TimeSpan.FromMilliseconds(500), UpdateSensorsAndDataModel, nameof(UpdateSensorsAndDataModel));
         }

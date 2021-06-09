@@ -9,7 +9,7 @@ using System.Collections.Generic;
 
 namespace Artemis.Plugins.HardwareMonitors.Standalone
 {
-    [PluginFeature(AlwaysEnabled = true)]
+    [PluginFeature(AlwaysEnabled = true, Icon = "Chip")]
     public class HardwareMonitorModule : Module<HardwareMonitorDataModel>
     {
         private Computer _computer;

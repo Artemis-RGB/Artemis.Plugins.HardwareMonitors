@@ -14,7 +14,7 @@ using System.Xml;
 
 namespace Artemis.Plugins.HardwareMonitors.Aida64
 {
-    [PluginFeature(AlwaysEnabled = true)]
+    [PluginFeature(AlwaysEnabled = true, Icon = "Chip")]
     public class Aida64Module : Module<Aida64DataModel>
     {
         private readonly ILogger _logger;
@@ -22,13 +22,12 @@ namespace Artemis.Plugins.HardwareMonitors.Aida64
         private MemoryMappedViewStream rootStream;
         private List<AidaElement> _aidaElements;
 
-        public override List<IModuleActivationRequirement> ActivationRequirements => null;
+        public override List<IModuleActivationRequirement> ActivationRequirements { get; } = new() { new ProcessActivationRequirement("aida64") };
 
         public Aida64Module(ILogger logger)
         {
             _logger = logger;
 
-            ActivationRequirements.Add(new ProcessActivationRequirement("aida64"));
             UpdateDuringActivationOverride = false;
             AddTimedUpdate(TimeSpan.FromSeconds(1), UpdateSensorsAndDataModel, nameof(UpdateSensorsAndDataModel));
         }
