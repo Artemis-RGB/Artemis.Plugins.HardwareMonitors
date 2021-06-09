@@ -14,12 +14,15 @@ using System.Xml;
 
 namespace Artemis.Plugins.HardwareMonitors.Aida64
 {
+    [PluginFeature(AlwaysEnabled = true)]
     public class Aida64Module : Module<Aida64DataModel>
     {
         private readonly ILogger _logger;
         private MemoryMappedFile memoryMappedFile;
         private MemoryMappedViewStream rootStream;
         private List<AidaElement> _aidaElements;
+
+        public override List<IModuleActivationRequirement> ActivationRequirements => null;
 
         public Aida64Module(ILogger logger)
         {

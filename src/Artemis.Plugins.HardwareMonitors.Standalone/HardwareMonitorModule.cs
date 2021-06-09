@@ -5,13 +5,17 @@ using System.Security.Principal;
 using LibreHardwareMonitor.Hardware;
 using System.Linq;
 using Artemis.Core.Modules;
+using System.Collections.Generic;
 
 namespace Artemis.Plugins.HardwareMonitors.Standalone
 {
+    [PluginFeature(AlwaysEnabled = true)]
     public class HardwareMonitorModule : Module<HardwareMonitorDataModel>
     {
         private Computer _computer;
         private readonly UpdateVisitor _visitor = new();
+
+        public override List<IModuleActivationRequirement> ActivationRequirements => null;
 
         public HardwareMonitorModule()
         {

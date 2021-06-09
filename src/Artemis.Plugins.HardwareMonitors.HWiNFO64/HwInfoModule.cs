@@ -13,6 +13,7 @@ using Artemis.Core;
 
 namespace Artemis.Plugins.HardwareMonitors.HWiNFO64
 {
+    [PluginFeature(AlwaysEnabled = true)]
     public class HwInfoModule : Module<HwInfoDataModel>
     {
         private const string SHARED_MEMORY = @"Global\HWiNFO_SENS_SM2";
@@ -35,6 +36,8 @@ namespace Artemis.Plugins.HardwareMonitors.HWiNFO64
 
         private readonly byte[] _hardwareBuffer = new byte[sizeOfHwInfoHardware];
         private readonly byte[] _sensorBuffer = new byte[sizeOfHwInfoSensor];
+
+        public override List<IModuleActivationRequirement> ActivationRequirements => null;
 
         public HwInfoModule(ILogger logger)
         {
