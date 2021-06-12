@@ -24,7 +24,9 @@ namespace Artemis.Plugins.HardwareMonitors.OpenHardwareMonitor
             List<Hardware> list = new(collection.Count);
 
             foreach (ManagementBaseObject obj in collection)
+            {
                 list.Add(FromManagementObject(obj));
+            }
 
             return list;
         }

@@ -1,5 +1,4 @@
 ﻿using Artemis.Core;
-using Artemis.Core.DataModelExpansions;
 using Artemis.Core.Modules;
 using Artemis.Plugins.DataModelExpansions.Aida64.DataModels;
 using Serilog;
@@ -9,7 +8,6 @@ using System.IO;
 using System.IO.MemoryMappedFiles;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 using System.Xml;
 
 namespace Artemis.Plugins.HardwareMonitors.Aida64
@@ -35,7 +33,9 @@ namespace Artemis.Plugins.HardwareMonitors.Aida64
         public override void ModuleActivated(bool isOverride)
         {
             if (isOverride)
+            {
                 return;
+            }
 
             const int maxRetries = 10;
             bool started = false;
@@ -61,13 +61,17 @@ namespace Artemis.Plugins.HardwareMonitors.Aida64
             }
 
             if (!started)
+            {
                 throw new ArtemisPluginException("Could not find the aida64 memory mapped file");
+            }
         }
 
         public override void ModuleDeactivated(bool isOverride)
         {
             if (isOverride)
+            {
                 return;
+            }
 
             memoryMappedFile?.Dispose();
             rootStream?.Dispose();
@@ -93,11 +97,11 @@ namespace Artemis.Plugins.HardwareMonitors.Aida64
 
         private void UpdateDataModels()
         {
-            foreach (var item in _aidaElements)
+            foreach (AidaElement item in _aidaElements)
             {
-                if (!DataModel.TryGetDynamicChild(item.Id, out var dm))
+                if (!DataModel.TryGetDynamicChild(item.Id, out DynamicChild dm))
                 {
-                    if (float.TryParse(item.Value, out var floatValue))
+                    if (float.TryParse(item.Value, out float floatValue))
                     {
                         dm = DataModel.AddDynamicChild(item.Id, floatValue);
                     }
@@ -153,13 +157,15 @@ namespace Artemis.Plugins.HardwareMonitors.Aida64
         {
             rootStream.Seek(0, SeekOrigin.Begin);
 
-            var sb = new StringBuilder();
+            StringBuilder sb = new StringBuilder();
             //since there's no root element we have to add one ourselves
             sb.Append("<aida>");
 
             int c;
             while ((c = rootStream.ReadByte()) > 0)
+            {
                 sb.Append((char)c);
+            }
 
             sb.Append("</aida>");
 

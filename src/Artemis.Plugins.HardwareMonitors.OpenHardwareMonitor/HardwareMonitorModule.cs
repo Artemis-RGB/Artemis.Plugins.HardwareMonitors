@@ -1,5 +1,4 @@
 ﻿using Artemis.Core;
-using Artemis.Core.DataModelExpansions;
 using Artemis.Core.Modules;
 using Serilog;
 using System;
@@ -53,7 +52,9 @@ namespace Artemis.Plugins.HardwareMonitors.OpenHardwareMonitor
         public override void ModuleActivated(bool isOverride)
         {
             if (isOverride)
+            {
                 return;
+            }
 
             //hack: all the data takes a moment to apper.
             //we need to wait for a moment so the app has time to
@@ -100,7 +101,9 @@ namespace Artemis.Plugins.HardwareMonitors.OpenHardwareMonitor
         public override void ModuleDeactivated(bool isOverride)
         {
             if (isOverride)
+            {
                 return;
+            }
 
             _cache.Clear();
             SensorSearcher?.Dispose();

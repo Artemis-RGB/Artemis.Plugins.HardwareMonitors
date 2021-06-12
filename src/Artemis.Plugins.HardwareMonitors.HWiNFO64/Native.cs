@@ -34,7 +34,10 @@ namespace Artemis.Plugins.HardwareMonitors.HWiNFO64
         [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)]
         internal readonly string NameCustom;
 
-        internal string GetId() => $"{HardwareId}-{HardwareInstance}";
+        internal string GetId()
+        {
+            return $"{HardwareId}-{HardwareInstance}";
+        }
     }
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 1, Size = 316)]

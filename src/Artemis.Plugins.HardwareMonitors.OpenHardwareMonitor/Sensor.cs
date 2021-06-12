@@ -57,13 +57,16 @@ namespace Artemis.Plugins.HardwareMonitors.OpenHardwareMonitor
 
         public static IEnumerable<Sensor> FromCollectionFast(ManagementObjectCollection collection)
         {
-            foreach (var item in collection)
+            foreach (ManagementBaseObject item in collection)
             {
                 yield return FromManagementObjectFast(item);
             }
         }
 
-        public override string ToString() => $"{Identifier} : {Value}";
+        public override string ToString()
+        {
+            return $"{Identifier} : {Value}";
+        }
 
         public int CompareTo(object other)
         {

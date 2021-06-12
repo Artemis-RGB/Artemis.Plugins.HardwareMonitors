@@ -1,11 +1,10 @@
 ﻿using Artemis.Core;
-using Artemis.Core.DataModelExpansions;
-using System;
-using System.Security.Principal;
-using LibreHardwareMonitor.Hardware;
-using System.Linq;
 using Artemis.Core.Modules;
+using LibreHardwareMonitor.Hardware;
+using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Security.Principal;
 
 namespace Artemis.Plugins.HardwareMonitors.Standalone
 {
@@ -25,7 +24,9 @@ namespace Artemis.Plugins.HardwareMonitors.Standalone
         public override void Enable()
         {
             if (!IsUserAdministrator())
+            {
                 throw new ArtemisPluginException("Admin privileges required");
+            }
 
             _computer = new Computer
             {
@@ -55,13 +56,15 @@ namespace Artemis.Plugins.HardwareMonitors.Standalone
         private void UpdateDynamicDataModels()
         {
             int hardwareIdCounter = 0;
-            var allOfThem = _computer.Hardware.Concat(_computer.Hardware.SelectMany(h => h.SubHardware));
+            IEnumerable<IHardware> allOfThem = _computer.Hardware.Concat(_computer.Hardware.SelectMany(h => h.SubHardware));
             foreach (IHardware hw in allOfThem.OrderBy(hw => hw.HardwareType))
             {
                 if (!hw.Sensors.Any())
+                {
                     continue;
+                }
 
-               HardwareDynamicDataModel hwDataModel = DataModel.AddDynamicChild(
+                HardwareDynamicDataModel hwDataModel = DataModel.AddDynamicChild(
                     $"{hw.HardwareType}{hardwareIdCounter++}",
                     new HardwareDynamicDataModel(),
                     hw.Name,
@@ -71,7 +74,7 @@ namespace Artemis.Plugins.HardwareMonitors.Standalone
                 //group sensors by type for easier UI navigation.
                 //this is also the way the UI of the HardwareMonitor
                 //programs displays the sensors, so let's keep that consistent
-                foreach (var sensorsOfType in hw.Sensors.GroupBy(s => s.SensorType))
+                foreach (IGrouping<SensorType, ISensor> sensorsOfType in hw.Sensors.GroupBy(s => s.SensorType))
                 {
                     SensorTypeDynamicDataModel sensorTypeDataModel = hwDataModel.AddDynamicChild(
                         sensorsOfType.Key.ToString(),
@@ -80,7 +83,7 @@ namespace Artemis.Plugins.HardwareMonitors.Standalone
 
                     int sensorIdCounter = 0;
                     //for each type of sensor, we add all the sensors we found
-                    foreach (var sensorOfType in sensorsOfType.OrderBy(s => s.Name))
+                    foreach (ISensor sensorOfType in sensorsOfType.OrderBy(s => s.Name))
                     {
                         SensorDynamicDataModel dataModel = sensorsOfType.Key switch
                         {
@@ -139,7 +142,9 @@ namespace Artemis.Plugins.HardwareMonitors.Standalone
             finally
             {
                 if (user != null)
+                {
                     user.Dispose();
+                }
             }
             return isAdmin;
         }

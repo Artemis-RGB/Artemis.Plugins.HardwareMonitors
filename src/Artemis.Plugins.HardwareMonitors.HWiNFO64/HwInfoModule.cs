@@ -1,15 +1,14 @@
-﻿using Artemis.Core.DataModelExpansions;
+﻿using Artemis.Core;
+using Artemis.Core.Modules;
 using Artemis.Plugins.HardwareMonitors.HWiNFO64.DataModels;
+using Serilog;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.IO.MemoryMappedFiles;
 using System.Linq;
 using System.Runtime.InteropServices;
-using System.IO;
-using Artemis.Core.Modules;
-using Serilog;
 using System.Threading;
-using Artemis.Core;
 
 namespace Artemis.Plugins.HardwareMonitors.HWiNFO64
 {
@@ -48,7 +47,9 @@ namespace Artemis.Plugins.HardwareMonitors.HWiNFO64
         public override void ModuleActivated(bool isOverride)
         {
             if (isOverride)
+            {
                 return;
+            }
 
             const int maxRetries = 10;
             bool started = false;
@@ -64,7 +65,7 @@ namespace Artemis.Plugins.HardwareMonitors.HWiNFO64
                         sizeOfHwInfoRoot,
                         MemoryMappedFileAccess.Read);
 
-                    var hwinfoRootBytes = new byte[sizeOfHwInfoRoot];
+                    byte[] hwinfoRootBytes = new byte[sizeOfHwInfoRoot];
                     _rootStream.Read(hwinfoRootBytes, 0, sizeOfHwInfoRoot);
                     _hwInfoRoot = BytesToStruct<HwInfoRoot>(hwinfoRootBytes);
 
@@ -88,7 +89,10 @@ namespace Artemis.Plugins.HardwareMonitors.HWiNFO64
                     PopulateDynamicDataModels();
 
                     if (_timedUpdate != null)
+                    {
                         _timedUpdate?.Dispose();
+                    }
+
                     _timedUpdate = AddTimedUpdate(TimeSpan.FromMilliseconds(_hwInfoRoot.PollingPeriod), UpdateSensorsAndDataModel, nameof(UpdateSensorsAndDataModel));
 
                     started = true;
@@ -103,7 +107,9 @@ namespace Artemis.Plugins.HardwareMonitors.HWiNFO64
             }
 
             if (!started)
+            {
                 throw new ArtemisPluginException("Could not find the HWiNFO64 memory mapped file");
+            }
         }
 
         public override void ModuleDeactivated(bool isOverride)
@@ -131,9 +137,9 @@ namespace Artemis.Plugins.HardwareMonitors.HWiNFO64
         {
             UpdateSensors();
 
-            foreach (var item in _sensors)
+            foreach (HwInfoSensor item in _sensors)
             {
-                if (_cache.TryGetValue(item.Id, out var child))
+                if (_cache.TryGetValue(item.Id, out DynamicChild<SensorDynamicDataModel> child))
                 {
                     child.Value.CurrentValue = item.Value;
                     child.Value.Average = item.ValueAvg;
@@ -152,7 +158,9 @@ namespace Artemis.Plugins.HardwareMonitors.HWiNFO64
                 IEnumerable<HwInfoSensor> children = _sensors.Where(re => re.ParentIndex == i);
 
                 if (!children.Any())
+                {
                     continue;
+                }
 
                 HardwareDynamicDataModel hardwareDataModel = DataModel.AddDynamicChild(
                     hw.GetId(),
@@ -174,7 +182,7 @@ namespace Artemis.Plugins.HardwareMonitors.HWiNFO64
                     int sensorOfTypeIndex = 0;
                     foreach (HwInfoSensor sensor in sensorsOfType.OrderBy(s => s.LabelOriginal))
                     {
-                        var dataModel = sensorTypeDataModel.AddDynamicChild(
+                        DynamicChild<SensorDynamicDataModel> dataModel = sensorTypeDataModel.AddDynamicChild(
                             $"{sensorsOfType.Key.ToString().ToLower()}{sensorOfTypeIndex++}",
                             new SensorDynamicDataModel(),
                             sensor.LabelCustom,
@@ -215,7 +223,7 @@ namespace Artemis.Plugins.HardwareMonitors.HWiNFO64
         {
             T result;
 
-            var handle = GCHandle.Alloc(bytes, GCHandleType.Pinned);
+            GCHandle handle = GCHandle.Alloc(bytes, GCHandleType.Pinned);
             try
             {
                 result = (T)Marshal.PtrToStructure(handle.AddrOfPinnedObject(), typeof(T));

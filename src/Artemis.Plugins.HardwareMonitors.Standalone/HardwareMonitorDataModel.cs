@@ -1,6 +1,5 @@
-﻿using Artemis.Core.DataModelExpansions;
+﻿using Artemis.Core.Modules;
 using LibreHardwareMonitor.Hardware;
-using System.Collections.Generic;
 
 namespace Artemis.Plugins.HardwareMonitors.Standalone
 {
