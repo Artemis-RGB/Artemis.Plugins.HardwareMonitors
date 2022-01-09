@@ -1,6 +1,8 @@
 # Artemis.Plugins.HardwareMonitors
 Repository containing hardware monitoring plugins
 
+# [Download link](https://nightly.link/Artemis-RGB/Artemis.Plugins.HardwareMonitors/workflows/build/master)
+
 ## Supported methods of monitoring
 
 ### HWiNFO64
