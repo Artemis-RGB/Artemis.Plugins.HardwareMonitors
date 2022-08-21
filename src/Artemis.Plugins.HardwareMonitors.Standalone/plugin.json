@@ -1,5 +1,6 @@
 {
   "Guid": "86cd04cb-2cc2-4a59-a215-71bfd39f6d83",
+  "Api": "1.0",
   "Name": "Standalone Hardware Monitor",
   "Author": "diogotr7",
   "Icon": "Chip",
