@@ -1,8 +1,11 @@
 {
   "Guid": "0333e3d6-efbe-4328-851c-2981a69fcd89",
+  "Api": "1.0",
   "Name": "HWiNFO64",
+  "Author": "diogotr7",
   "Icon": "Chip",
   "Description": "Provides hardware statistics like load, voltage and temperature for system components. Requires HWiNFO64 to be running in the background.",
   "Version": "1.0.0.0",
-  "Main": "Artemis.Plugins.HardwareMonitors.HWiNFO64.dll"
+  "Main": "Artemis.Plugins.HardwareMonitors.HWiNFO64.dll",
+  "Platforms": "Windows"
 }
