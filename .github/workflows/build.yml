@@ -2,7 +2,6 @@ name: Build Plugins
 
 on: [push, pull_request]
 
-
 jobs:
   build:
     runs-on: [windows-latest]
@@ -13,26 +12,11 @@ jobs:
         with:
           dotnet-version: '6.0.x'
 
-      - name: Clone Artemis
-        uses: actions/checkout@v2
-        with:
-          repository: Artemis-RGB/Artemis
-          path: Artemis
-          ref: feature/avalonia
-
-      - name: Build Artemis Core
-        run: dotnet build .\Artemis\src\Artemis.Core\Artemis.Core.csproj
-        
-      - name: Build Artemis UI Shared
-        run: dotnet build .\Artemis\src\Artemis.UI.Shared\Artemis.UI.Shared.csproj
-
       - name: Clone Plugins
         uses: actions/checkout@v2
-        with:
-          path: Plugins
 
       - name: Build Plugins
-        run: dotnet publish -c Release .\Plugins\src\Artemis.Plugins.HardwareMonitors.sln
+        run: dotnet publish -c Release src/Artemis.Plugins.HardwareMonitors.sln
 
         #msbuild is dumb so we have to upload one at a time :)
         #https://github.com/dotnet/sdk/issues/7238
@@ -41,22 +25,22 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: Aida64
-          path: .\Plugins\src\Artemis.Plugins.HardwareMonitors.Aida64\bin\x64\Release\net6.0\publish
+          path: src/Artemis.Plugins.HardwareMonitors.Aida64/bin/x64/Release/net6.0/publish
 
       - name: Upload HWiNFO64
         uses: actions/upload-artifact@v2
         with:
           name: HWiNFO64
-          path: .\Plugins\src\Artemis.Plugins.HardwareMonitors.HWiNFO64\bin\x64\Release\net6.0\publish
+          path: src/Artemis.Plugins.HardwareMonitors.HWiNFO64/bin/x64/Release/net6.0/publish
 
       - name: Upload OpenHardwareMonitor
         uses: actions/upload-artifact@v2
         with:
           name: OpenHardwareMonitor
-          path: .\Plugins\src\Artemis.Plugins.HardwareMonitors.OpenHardwareMonitor\bin\x64\Release\net6.0\publish
+          path: src/Artemis.Plugins.HardwareMonitors.OpenHardwareMonitor/bin/x64/Release/net6.0/publish
 
       - name: Upload Standalone
         uses: actions/upload-artifact@v2
         with:
           name: Standalone
-          path: .\Plugins\src\Artemis.Plugins.HardwareMonitors.Standalone\bin\x64\Release\net6.0-windows\publish
+          path: src/Artemis.Plugins.HardwareMonitors.Standalone/bin/x64/Release/net6.0-windows/publish

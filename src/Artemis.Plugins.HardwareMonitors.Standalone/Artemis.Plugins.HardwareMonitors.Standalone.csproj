@@ -1,24 +1,20 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <TargetFramework>net6.0-windows</TargetFramework>
-    <Platforms>x64</Platforms>
-    <EnableDynamicLoading>true</EnableDynamicLoading>
-    <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
-  </PropertyGroup>
+    <PropertyGroup>
+        <TargetFramework>net6.0-windows</TargetFramework>
+        <Platforms>x64</Platforms>
+        <EnableDynamicLoading>true</EnableDynamicLoading>
+    </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="LibreHardwareMonitorLib" Version="0.8.7" />
-  </ItemGroup>
-  
-  <ItemGroup>
-    <Reference Include="Artemis.Core">
-      <HintPath>..\..\..\Artemis\src\Artemis.Core\bin\net6.0\Artemis.Core.dll</HintPath>
-      <Private>false</Private>
-    </Reference>
-  </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="ArtemisRGB.UI.Shared" IncludeAssets="compile;build;buildTransitive" Version="1.2022.1112.5" />
+    </ItemGroup>
 
-  <ItemGroup>
-    <Content Include="plugin.json" CopyToOutputDirectory="PreserveNewest" />
-    <PackageReference Include="ArtemisRGB.Plugins.BuildTask" Version="1.1.0" />
-  </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="LibreHardwareMonitorLib" Version="0.8.7" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Content Include="plugin.json" CopyToOutputDirectory="PreserveNewest" />
+        <PackageReference Include="ArtemisRGB.Plugins.BuildTask" Version="1.1.0" />
+    </ItemGroup>
 </Project>
