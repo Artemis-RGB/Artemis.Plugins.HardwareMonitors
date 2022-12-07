@@ -12,13 +12,10 @@ using System.Threading;
 
 namespace Artemis.Plugins.HardwareMonitors.HWiNFO64
 {
-    [PluginFeature(AlwaysEnabled = true, Icon = "Chip")]
+    [PluginFeature(AlwaysEnabled = true)]
     public class HwInfoModule : Module<HwInfoDataModel>
     {
         private const string SHARED_MEMORY = @"Global\HWiNFO_SENS_SM2";
-        private static readonly int sizeOfHwInfoRoot = Marshal.SizeOf<HwInfoRoot>();
-        private static readonly int sizeOfHwInfoHardware = Marshal.SizeOf<HwInfoHardware>();
-        private static readonly int sizeOfHwInfoSensor = Marshal.SizeOf<HwInfoSensor>();
         private readonly ILogger _logger;
 
         private MemoryMappedFile _memoryMappedFile;
@@ -33,8 +30,8 @@ namespace Artemis.Plugins.HardwareMonitors.HWiNFO64
 
         private readonly Dictionary<ulong, DynamicChild<SensorDynamicDataModel>> _cache = new();
 
-        private readonly byte[] _hardwareBuffer = new byte[sizeOfHwInfoHardware];
-        private readonly byte[] _sensorBuffer = new byte[sizeOfHwInfoSensor];
+        private byte[] _hardwareBuffer;
+        private byte[] _sensorBuffer;
 
         public override List<IModuleActivationRequirement> ActivationRequirements { get; } = new() { new ProcessActivationRequirement("HWiNFO64") };
 
@@ -47,9 +44,7 @@ namespace Artemis.Plugins.HardwareMonitors.HWiNFO64
         public override void ModuleActivated(bool isOverride)
         {
             if (isOverride)
-            {
                 return;
-            }
 
             const int maxRetries = 10;
             bool started = false;
@@ -60,24 +55,28 @@ namespace Artemis.Plugins.HardwareMonitors.HWiNFO64
                 {
                     _memoryMappedFile = MemoryMappedFile.OpenExisting(SHARED_MEMORY, MemoryMappedFileRights.Read);
 
+                    byte[] hwinfoRootBytes = new byte[Marshal.SizeOf<HwInfoRoot>()];
+
                     _rootStream = _memoryMappedFile.CreateViewStream(
                         0,
-                        sizeOfHwInfoRoot,
+                        hwinfoRootBytes.Length,
                         MemoryMappedFileAccess.Read);
 
-                    byte[] hwinfoRootBytes = new byte[sizeOfHwInfoRoot];
-                    _rootStream.Read(hwinfoRootBytes, 0, sizeOfHwInfoRoot);
+                    _rootStream.Read(hwinfoRootBytes, 0, hwinfoRootBytes.Length);
                     _hwInfoRoot = BytesToStruct<HwInfoRoot>(hwinfoRootBytes);
 
                     _hardwareStream = _memoryMappedFile.CreateViewStream(
                         _hwInfoRoot.HardwareSectionOffset,
-                        _hwInfoRoot.HardwareCount * sizeOfHwInfoHardware,
+                        _hwInfoRoot.HardwareCount * _hwInfoRoot.HardwareSize,
                         MemoryMappedFileAccess.Read);
 
                     _sensorStream = _memoryMappedFile.CreateViewStream(
                         _hwInfoRoot.SensorSectionOffset,
-                        _hwInfoRoot.SensorCount * sizeOfHwInfoSensor,
+                        _hwInfoRoot.SensorCount * _hwInfoRoot.SensorSize,
                         MemoryMappedFileAccess.Read);
+
+                    _hardwareBuffer = new byte[_hwInfoRoot.HardwareSize];
+                    _sensorBuffer = new byte[_hwInfoRoot.SensorSize];
 
                     _hardwares = new HwInfoHardware[_hwInfoRoot.HardwareCount];
                     _sensors = new HwInfoSensor[_hwInfoRoot.SensorCount];
@@ -88,10 +87,7 @@ namespace Artemis.Plugins.HardwareMonitors.HWiNFO64
 
                     PopulateDynamicDataModels();
 
-                    if (_timedUpdate != null)
-                    {
-                        _timedUpdate?.Dispose();
-                    }
+                    _timedUpdate?.Dispose();
 
                     _timedUpdate = AddTimedUpdate(TimeSpan.FromMilliseconds(_hwInfoRoot.PollingPeriod), UpdateSensorsAndDataModel, nameof(UpdateSensorsAndDataModel));
 
@@ -99,17 +95,20 @@ namespace Artemis.Plugins.HardwareMonitors.HWiNFO64
                     _logger.Information("Started HWiNFO64 memory reader successfully");
                     return;
                 }
-                catch
+                catch (FileNotFoundException e1)
                 {
-                    _logger.Error("Failed to start HWiNFO64 memory reader. Retrying...");
+                    _logger.Error(e1, "Failed to start HWiNFO64 memory reader. Retrying...");
                     Thread.Sleep(500);
+                }
+                catch (Exception e2)
+                {
+                    _logger.Error(e2, "Exception reading HWInfo structure, please show developers.");
+                    break;
                 }
             }
 
             if (!started)
-            {
                 throw new ArtemisPluginException("Could not find the HWiNFO64 memory mapped file");
-            }
         }
 
         public override void ModuleDeactivated(bool isOverride)
@@ -158,9 +157,7 @@ namespace Artemis.Plugins.HardwareMonitors.HWiNFO64
                 IEnumerable<HwInfoSensor> children = _sensors.Where(re => re.ParentIndex == i);
 
                 if (!children.Any())
-                {
                     continue;
-                }
 
                 HardwareDynamicDataModel hardwareDataModel = DataModel.AddDynamicChild(
                     hw.GetId(),
@@ -201,7 +198,7 @@ namespace Artemis.Plugins.HardwareMonitors.HWiNFO64
 
             for (int i = 0; i < _hwInfoRoot.HardwareCount; i++)
             {
-                _hardwareStream.Read(_hardwareBuffer, 0, sizeOfHwInfoHardware);
+                _hardwareStream.Read(_hardwareBuffer, 0, _hardwareBuffer.Length);
 
                 _hardwares[i] = BytesToStruct<HwInfoHardware>(_hardwareBuffer);
             }
@@ -213,7 +210,7 @@ namespace Artemis.Plugins.HardwareMonitors.HWiNFO64
 
             for (int i = 0; i < _hwInfoRoot.SensorCount; i++)
             {
-                _sensorStream.Read(_sensorBuffer, 0, sizeOfHwInfoSensor);
+                _sensorStream.Read(_sensorBuffer, 0, _sensorBuffer.Length);
 
                 _sensors[i] = BytesToStruct<HwInfoSensor>(_sensorBuffer);
             }
