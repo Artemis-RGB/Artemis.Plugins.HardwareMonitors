@@ -6,11 +6,11 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="ArtemisRGB.UI.Shared" IncludeAssets="compile;build;buildTransitive" Version="1.2023.111.4" />
+        <PackageReference Include="ArtemisRGB.UI.Shared" IncludeAssets="compile;build;buildTransitive" Version="1.2023.306.3" />
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="LibreHardwareMonitorLib" Version="0.9.1" />
+        <PackageReference Include="LibreHardwareMonitorLib" Version="0.9.2" />
     </ItemGroup>
 
     <ItemGroup>
