@@ -95,7 +95,7 @@ namespace Artemis.Plugins.HardwareMonitors.OpenHardwareMonitor
                 _logger.Information($"Successfully connected to WMI scope: {scope}");
                 return;
             }
-            throw new ArtemisPluginException(Plugin, "Could not find hardware monitor WMI scope with data");
+            throw new ArtemisPluginException("Could not find hardware monitor WMI scope with data");
         }
 
         public override void ModuleDeactivated(bool isOverride)
