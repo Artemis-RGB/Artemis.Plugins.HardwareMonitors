@@ -76,17 +76,23 @@ namespace Artemis.Plugins.HardwareMonitors.OpenHardwareMonitor
 
     public enum SensorType
     {
-        Temperature,
-        Voltage,
-        Level,
-        SmallData,
-        Load,
-        Data,
-        Power,
-        Fan,
-        Throughput,
-        Factor,
-        Control,
-        Clock
+        Voltage, // V
+        Current, // A
+        Power, // W
+        Clock, // MHz
+        Temperature, // °C
+        Load, // %
+        Frequency, // Hz
+        Fan, // RPM
+        Flow, // L/h
+        Control, // %
+        Level, // %
+        Factor, // 1
+        Data, // GB = 2^30 Bytes
+        SmallData, // MB = 2^20 Bytes
+        Throughput, // B/s
+        TimeSpan, // Seconds 
+        Energy, // milliwatt-hour (mWh)
+        Noise // dBA
     }
 }

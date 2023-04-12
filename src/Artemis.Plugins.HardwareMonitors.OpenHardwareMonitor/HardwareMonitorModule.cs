@@ -159,6 +159,14 @@ namespace Artemis.Plugins.HardwareMonitors.OpenHardwareMonitor
                             SensorType.Fan => new FanDynamicDataModel(sensorOfType.Identifier),
                             SensorType.Throughput => new ThroughputDynamicDataModel(sensorOfType.Identifier),
                             SensorType.Clock => new ClockDynamicDataModel(sensorOfType.Identifier),
+                            SensorType.Current => new CurrentDynamicDataModel(sensorOfType.Identifier),
+                            SensorType.Frequency => new FrequencyDynamicDataModel(sensorOfType.Identifier),
+                            SensorType.Flow => new FlowDynamicDataModel(sensorOfType.Identifier),
+                            SensorType.Control => new PercentageDynamicDataModel(sensorOfType.Identifier),
+                            SensorType.Factor => new SensorDynamicDataModel(sensorOfType.Identifier),
+                            SensorType.TimeSpan => new TimeSpanDynamicDataModel(sensorOfType.Identifier),
+                            SensorType.Energy => new EnergyDynamicDataModel(sensorOfType.Identifier),
+                            SensorType.Noise => new NoiseDynamicDataModel(sensorOfType.Identifier),
                             _ => new SensorDynamicDataModel(sensorOfType.Identifier),
                         };
 
