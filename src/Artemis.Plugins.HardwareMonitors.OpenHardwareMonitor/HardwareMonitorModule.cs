@@ -90,7 +90,15 @@ namespace Artemis.Plugins.HardwareMonitors.OpenHardwareMonitor
                     continue;
                 }
 
-                PopulateDynamicDataModels(hardwares, sensors);
+                try
+                {                
+                    PopulateDynamicDataModels(hardwares, sensors);
+                }
+                catch (Exception e)
+                {
+                    _logger.Error(e, "Error while populating dynamic data models");
+                    return;
+                }
 
                 _logger.Information($"Successfully connected to WMI scope: {scope}");
                 return;
@@ -108,6 +116,7 @@ namespace Artemis.Plugins.HardwareMonitors.OpenHardwareMonitor
             _cache.Clear();
             SensorSearcher?.Dispose();
             HardwareSearcher?.Dispose();
+            DataModel.ClearDynamicChildren();
         }
 
         private void PopulateDynamicDataModels(IEnumerable<Hardware> hardwares, IEnumerable<Sensor> sensors)
@@ -124,7 +133,7 @@ namespace Artemis.Plugins.HardwareMonitors.OpenHardwareMonitor
                 {
                     continue;
                 }
-
+                
                 HardwareDynamicDataModel hwDataModel = DataModel.AddDynamicChild(
                     $"{hw.HardwareType}{hardwareIdCounter++}",
                     new HardwareDynamicDataModel(),
@@ -146,6 +155,9 @@ namespace Artemis.Plugins.HardwareMonitors.OpenHardwareMonitor
                     //for each type of sensor, we add all the sensors we found
                     foreach (Sensor sensorOfType in sensorsOfType.OrderBy(s => s.Name))
                     {
+                        if (_cache.ContainsKey(sensorOfType.Identifier))
+                            continue;
+                        
                         //this switch is only useful for the unit of each sensor
                         SensorDynamicDataModel dataModel = sensorsOfType.Key switch
                         {
