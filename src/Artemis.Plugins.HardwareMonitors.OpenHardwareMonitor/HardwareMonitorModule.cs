@@ -121,6 +121,8 @@ namespace Artemis.Plugins.HardwareMonitors.OpenHardwareMonitor
 
         private void PopulateDynamicDataModels(IEnumerable<Hardware> hardwares, IEnumerable<Sensor> sensors)
         {
+            DataModel.ClearDynamicChildren();
+            
             int hardwareIdCounter = 0;
             foreach (Hardware hw in hardwares.OrderBy(hw => hw.HardwareType))
             {
