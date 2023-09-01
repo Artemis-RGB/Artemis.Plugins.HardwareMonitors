@@ -15,13 +15,13 @@ public class HwInfoModule : Module<HwInfoDataModel>
 {
     private readonly ILogger _logger;
 
-    private HwInfo64Reader _reader;
-    private TimedUpdateRegistration _timedUpdate;
-
-    private HwInfoRoot _hwInfoRoot;
+    private HwInfo64Reader _reader;    
+    private HwInfoHardware[] _hardwares;
     private HwInfoSensor[] _sensors;
-    private SensorDynamicDataModel[] _dataModels;
-
+    
+    private SensorDataModel[] _sensorDataModels;
+    
+    private TimedUpdateRegistration _timedUpdate;
     public override List<IModuleActivationRequirement> ActivationRequirements { get; } = new() { new ProcessActivationRequirement("HWiNFO64") };
 
     public HwInfoModule(ILogger logger)
@@ -43,19 +43,20 @@ public class HwInfoModule : Module<HwInfoDataModel>
             try
             {
                 _reader = new HwInfo64Reader();
-                _hwInfoRoot = _reader.ReadRoot();
+                var hwInfoData = _reader.ReadRoot();
                 
-                if (_hwInfoRoot.Version != 2)
+                if (hwInfoData.Version != 2)
                     throw new ArtemisPluginException("HWiNFO64 protocol version is not 2, please update HWiNFO64 to the latest version");
                 
-                _sensors = new HwInfoSensor[_hwInfoRoot.SensorCount];
-                _dataModels = new SensorDynamicDataModel[_hwInfoRoot.SensorCount];
+                _hardwares = new HwInfoHardware[hwInfoData.HardwareCount];
+                _sensors = new HwInfoSensor[hwInfoData.SensorCount];
+                _sensorDataModels = new SensorDataModel[hwInfoData.SensorCount];
                 
                 PopulateDynamicDataModels();
 
                 _timedUpdate?.Dispose();
 
-                _timedUpdate = AddTimedUpdate(TimeSpan.FromMilliseconds(_hwInfoRoot.PollingPeriod), UpdateSensorsAndDataModel, nameof(UpdateSensorsAndDataModel));
+                _timedUpdate = AddTimedUpdate(TimeSpan.FromMilliseconds(hwInfoData.PollingPeriod), UpdateSensorsAndDataModel, nameof(UpdateSensorsAndDataModel));
 
                 started = true;
                 _logger.Information("Started HWiNFO64 memory reader successfully");
@@ -86,9 +87,8 @@ public class HwInfoModule : Module<HwInfoDataModel>
     {
         _reader?.Dispose();
         _sensors = null;
-        _dataModels = null;
-        _hwInfoRoot = default;
-        _sensors = null;
+        _hardwares = null;
+        _sensorDataModels = null;
     }
 
     public override void Enable() { }
@@ -102,11 +102,11 @@ public class HwInfoModule : Module<HwInfoDataModel>
 
     private void UpdateSensorsAndDataModel(double deltaTime)
     {
-        _reader.ReadAllSensors(_sensors);
+        _reader.ReadSensors(_sensors);
 
         for (var index = 0; index < _sensors.Length; index++)
         {
-            var dataModel = _dataModels[index];
+            var dataModel = _sensorDataModels[index];
             var sensor = _sensors[index];
 
             dataModel.CurrentValue = sensor.Value;
@@ -118,45 +118,52 @@ public class HwInfoModule : Module<HwInfoDataModel>
 
     private void PopulateDynamicDataModels()
     {
-        _reader.ReadAllSensors(_sensors);
+        _reader.ReadHardwares(_hardwares);
+        _reader.ReadSensors(_sensors);
         
-        for (var i = 0; i < _hwInfoRoot.HardwareCount; i++)
+        var sensorsWithIndex = _sensors
+            .Select((s, idx) => (Sensor: s, Index: idx))
+            .ToArray();
+
+        for (var i = 0; i < _hardwares.Length; i++)
         {
-            var hw = _reader.ReadHardware(i);
-            
-            var childrenWithIndex = _sensors.Select((sensor, index) => (sensor, index)).Where(re => re.sensor.ParentIndex == i).ToArray();
+            var hw = _hardwares[i];
+
+            var childrenWithIndex = sensorsWithIndex
+                .Where(s => s.Sensor.ParentIndex == i)
+                .ToArray();
 
             if (!childrenWithIndex.Any())
                 continue;
 
             var hardwareDataModel = DataModel.AddDynamicChild(
                 hw.GetId(),
-                new HardwareDynamicDataModel(),
+                new HardwareDataModel(),
                 hw.NameCustomUtf8,
                 hw.NameOriginal
             ).Value;
 
-            foreach (var sensorsOfType in childrenWithIndex.GroupBy(s => s.sensor.SensorType))
+            foreach (var sensorsOfType in childrenWithIndex.GroupBy(s => s.Sensor.SensorType))
             {
                 var sensorTypeDataModel = hardwareDataModel.AddDynamicChild(
                     sensorsOfType.Key.ToString(),
-                    new SensorTypeDynamicDataModel()
+                    new SensorTypeDataModel()
                 ).Value;
 
                 //this will make it so the ids are something like:
                 //load1, load2, temperature1, temperature2
                 //which should be somewhat portable i guess
                 var sensorOfTypeIndex = 0;
-                foreach (var (sensor, index) in sensorsOfType.OrderBy(s => s.sensor.LabelOriginal.ToString()))
+                foreach (var (sensor, index) in sensorsOfType.OrderBy(s => s.Sensor.LabelOriginal.ToString()))
                 {
                     var dataModel = sensorTypeDataModel.AddDynamicChild(
                         $"{sensorsOfType.Key.ToString().ToLower()}{sensorOfTypeIndex++}",
-                        new SensorDynamicDataModel(),
+                        new SensorDataModel(),
                         sensor.LabelCustomUtf8,
                         sensor.LabelOriginal
                     );
 
-                    _dataModels[index] = dataModel.Value;
+                    _sensorDataModels[index] = dataModel.Value;
                 }
             }
         }

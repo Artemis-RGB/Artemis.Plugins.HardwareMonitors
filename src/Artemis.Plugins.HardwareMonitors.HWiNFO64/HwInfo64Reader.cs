@@ -41,19 +41,15 @@ internal sealed class HwInfo64Reader : IDisposable
         return root;
     }
     
-    public HwInfoHardware ReadHardware(int index)
+    public void ReadHardwares(HwInfoHardware[] hardwares)
     {
         if (_hardwares.SafeMemoryMappedViewHandle.IsClosed)
             throw new ObjectDisposedException(nameof(HwInfo64Reader));
         
-        var size = Unsafe.SizeOf<HwInfoHardware>();
-        
-        _hardwares.Read<HwInfoHardware>(index * size, out var hardware);
-        
-        return hardware;
+        _hardwares.ReadArray(0, hardwares, 0, hardwares.Length);
     }
     
-    public void ReadAllSensors(HwInfoSensor[] sensors)
+    public void ReadSensors(HwInfoSensor[] sensors)
     {
         if (_sensors.SafeMemoryMappedViewHandle.IsClosed)
             throw new ObjectDisposedException(nameof(HwInfo64Reader));
