@@ -22,7 +22,6 @@ internal sealed class HwInfo64Reader : IDisposable
         _sensors = _file.CreateViewAccessor(data.SensorSectionOffset, data.SensorSize * data.SensorCount, MemoryMappedFileAccess.Read);
     }
 
-
     public void Dispose()
     {
         _sensors.Dispose();
