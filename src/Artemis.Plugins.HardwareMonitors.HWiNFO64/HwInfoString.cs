@@ -20,23 +20,19 @@ public readonly struct HwInfoString128Ascii
     {
         var sb = new StringBuilder();
 
-        for (var i = 0; i < 128; i++)
+        foreach (ref readonly var c in _str.AsSpan())
         {
             //ascii only
-            var c = _str[i];
             if (c == 0)
                 break;
 
             sb.Append((char)c);
         }
-
+        
         return sb.ToString();
     }
 
-    public static implicit operator string(HwInfoString128Ascii str)
-    {
-        return str.ToString();
-    }
+    public static implicit operator string(HwInfoString128Ascii str) => str.ToString();
 }
 
 [StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -46,12 +42,7 @@ public readonly struct HwInfoString128Utf8
     
     public override string ToString()
     {
-        Span<byte> bytes = stackalloc byte[128];
-        
-        for (var i = 0; i < 128; i++)
-        {
-            bytes[i] = _str[i];
-        }
+        var bytes = _str.AsSpan();
         
         var endOfString = bytes.LastIndexOfAnyExcept((byte)0);
         //i'm assuming any contiguous zeroes after are null-terminators.
@@ -59,10 +50,7 @@ public readonly struct HwInfoString128Utf8
         return Encoding.UTF8.GetString(bytes[..(endOfString + 1)]);
     }
     
-    public static implicit operator string(HwInfoString128Utf8 str)
-    {
-        return str.ToString();
-    }
+    public static implicit operator string(HwInfoString128Utf8 str) => str.ToString();
 }
 
 [StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -73,11 +61,10 @@ public readonly struct HwInfoString16Ascii
     public override string ToString()
     {
         var sb = new StringBuilder();
-
-        for (var i = 0; i < 16; i++)
+        
+        foreach (ref readonly var c in _str.AsSpan())
         {
             //ascii only
-            var c = _str[i];
             if (c == 0)
                 break;
 
@@ -87,10 +74,7 @@ public readonly struct HwInfoString16Ascii
         return sb.ToString();
     }
 
-    public static implicit operator string(HwInfoString16Ascii str)
-    {
-        return str.ToString();
-    }
+    public static implicit operator string(HwInfoString16Ascii str) => str.ToString();
 }
 
 [StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -100,12 +84,7 @@ public readonly struct HwInfoString16Utf8
     
     public override string ToString()
     {
-        Span<byte> bytes = stackalloc byte[16];
-        
-        for (var i = 0; i < 16; i++)
-        {
-            bytes[i] = _str[i];
-        }
+        var bytes = _str.AsSpan();
         
         var endOfString = bytes.LastIndexOfAnyExcept((byte)0);
         //i'm assuming any contiguous zeroes after are null-terminators.
@@ -113,8 +92,5 @@ public readonly struct HwInfoString16Utf8
         return Encoding.UTF8.GetString(bytes[..(endOfString + 1)]);
     }
     
-    public static implicit operator string(HwInfoString16Utf8 str)
-    {
-        return str.ToString();
-    }
+    public static implicit operator string(HwInfoString16Utf8 str) => str.ToString();
 }
