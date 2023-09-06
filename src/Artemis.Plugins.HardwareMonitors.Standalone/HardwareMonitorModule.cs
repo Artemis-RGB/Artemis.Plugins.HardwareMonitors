@@ -8,7 +8,7 @@ using System.Security.Principal;
 
 namespace Artemis.Plugins.HardwareMonitors.Standalone
 {
-    [PluginFeature(AlwaysEnabled = true, Icon = "Chip")]
+    [PluginFeature(AlwaysEnabled = true)]
     public class HardwareMonitorModule : Module<HardwareMonitorDataModel>
     {
         private Computer _computer;

@@ -12,7 +12,7 @@ using System.Xml;
 
 namespace Artemis.Plugins.HardwareMonitors.Aida64
 {
-    [PluginFeature(AlwaysEnabled = true, Icon = "Chip")]
+    [PluginFeature(AlwaysEnabled = true)]
     public class Aida64Module : Module<Aida64DataModel>
     {
         private readonly ILogger _logger;

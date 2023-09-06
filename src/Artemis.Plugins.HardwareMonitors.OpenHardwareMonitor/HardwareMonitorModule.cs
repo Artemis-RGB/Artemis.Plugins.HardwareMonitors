@@ -9,7 +9,7 @@ using System.Threading;
 
 namespace Artemis.Plugins.HardwareMonitors.OpenHardwareMonitor
 {
-    [PluginFeature(AlwaysEnabled = true, Icon = "Chip")]
+    [PluginFeature(AlwaysEnabled = true)]
     public class HardwareMonitorModule : Module<HardwareMonitorDataModel>
     {
         private readonly ILogger _logger;

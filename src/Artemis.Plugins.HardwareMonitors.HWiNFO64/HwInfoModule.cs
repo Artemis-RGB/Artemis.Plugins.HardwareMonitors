@@ -5,232 +5,167 @@ using Serilog;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.IO.MemoryMappedFiles;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Threading;
 
-namespace Artemis.Plugins.HardwareMonitors.HWiNFO64
+namespace Artemis.Plugins.HardwareMonitors.HWiNFO64;
+
+[PluginFeature(AlwaysEnabled = true)]
+public class HwInfoModule : Module<HwInfoDataModel>
 {
-    [PluginFeature(AlwaysEnabled = true)]
-    public class HwInfoModule : Module<HwInfoDataModel>
+    private readonly ILogger _logger;
+
+    private HwInfo64Reader _reader;    
+    private HwInfoHardware[] _hardwares;
+    private HwInfoSensor[] _sensors;
+    
+    private SensorDataModel[] _sensorDataModels;
+    
+    private TimedUpdateRegistration _timedUpdate;
+    public override List<IModuleActivationRequirement> ActivationRequirements { get; } = new() { new ProcessActivationRequirement("HWiNFO64") };
+
+    public HwInfoModule(ILogger logger)
     {
-        private const string SHARED_MEMORY = @"Global\HWiNFO_SENS_SM2";
-        private readonly ILogger _logger;
+        _logger = logger;
+        UpdateDuringActivationOverride = false;
+    }
 
-        private MemoryMappedFile _memoryMappedFile;
-        private MemoryMappedViewStream _rootStream;
-        private MemoryMappedViewStream _hardwareStream;
-        private MemoryMappedViewStream _sensorStream;
-        private TimedUpdateRegistration _timedUpdate;
+    public override void ModuleActivated(bool isOverride)
+    {
+        if (isOverride)
+            return;
 
-        private HwInfoRoot _hwInfoRoot;
-        private HwInfoHardware[] _hardwares;
-        private HwInfoSensor[] _sensors;
+        const int MAX_RETRIES = 10;
+        var started = false;
 
-        private readonly Dictionary<ulong, DynamicChild<SensorDynamicDataModel>> _cache = new();
-
-        private byte[] _hardwareBuffer;
-        private byte[] _sensorBuffer;
-
-        public override List<IModuleActivationRequirement> ActivationRequirements { get; } = new() { new ProcessActivationRequirement("HWiNFO64") };
-
-        public HwInfoModule(ILogger logger)
+        for (var i = 0; i < MAX_RETRIES; i++)
         {
-            _logger = logger;
-            UpdateDuringActivationOverride = false;
-        }
-
-        public override void ModuleActivated(bool isOverride)
-        {
-            if (isOverride)
-                return;
-
-            const int maxRetries = 10;
-            bool started = false;
-
-            for (int i = 0; i < maxRetries; i++)
-            {
-                try
-                {
-                    _memoryMappedFile = MemoryMappedFile.OpenExisting(SHARED_MEMORY, MemoryMappedFileRights.Read);
-
-                    byte[] hwinfoRootBytes = new byte[Marshal.SizeOf<HwInfoRoot>()];
-
-                    _rootStream = _memoryMappedFile.CreateViewStream(
-                        0,
-                        hwinfoRootBytes.Length,
-                        MemoryMappedFileAccess.Read);
-
-                    _rootStream.Read(hwinfoRootBytes, 0, hwinfoRootBytes.Length);
-                    _hwInfoRoot = BytesToStruct<HwInfoRoot>(hwinfoRootBytes);
-
-                    _hardwareStream = _memoryMappedFile.CreateViewStream(
-                        _hwInfoRoot.HardwareSectionOffset,
-                        _hwInfoRoot.HardwareCount * _hwInfoRoot.HardwareSize,
-                        MemoryMappedFileAccess.Read);
-
-                    _sensorStream = _memoryMappedFile.CreateViewStream(
-                        _hwInfoRoot.SensorSectionOffset,
-                        _hwInfoRoot.SensorCount * _hwInfoRoot.SensorSize,
-                        MemoryMappedFileAccess.Read);
-
-                    _hardwareBuffer = new byte[_hwInfoRoot.HardwareSize];
-                    _sensorBuffer = new byte[_hwInfoRoot.SensorSize];
-
-                    _hardwares = new HwInfoHardware[_hwInfoRoot.HardwareCount];
-                    _sensors = new HwInfoSensor[_hwInfoRoot.SensorCount];
-
-                    UpdateHardwares();
-
-                    UpdateSensors();
-
-                    PopulateDynamicDataModels();
-
-                    _timedUpdate?.Dispose();
-
-                    _timedUpdate = AddTimedUpdate(TimeSpan.FromMilliseconds(_hwInfoRoot.PollingPeriod), UpdateSensorsAndDataModel, nameof(UpdateSensorsAndDataModel));
-
-                    started = true;
-                    _logger.Information("Started HWiNFO64 memory reader successfully");
-                    return;
-                }
-                catch (FileNotFoundException e1)
-                {
-                    _logger.Error(e1, "Failed to start HWiNFO64 memory reader. Retrying...");
-                    Thread.Sleep(500);
-                }
-                catch (Exception e2)
-                {
-                    _logger.Error(e2, "Exception reading HWInfo structure, please show developers.");
-                    break;
-                }
-            }
-
-            if (!started)
-                throw new ArtemisPluginException("Could not find the HWiNFO64 memory mapped file");
-        }
-
-        public override void ModuleDeactivated(bool isOverride)
-        {
-            _memoryMappedFile?.Dispose();
-            _rootStream?.Dispose();
-            _hardwareStream?.Dispose();
-            _sensorStream?.Dispose();
-            _cache.Clear();
-            _hwInfoRoot = default;
-            _hardwares = null;
-            _sensors = null;
-        }
-
-        public override void Enable() { }
-
-        public override void Disable() { }
-
-        public override void Update(double deltaTime)
-        {
-            //updates are done only as often as HWiNFO64 polls to save resources.
-        }
-
-        private void UpdateSensorsAndDataModel(double deltaTime)
-        {
-            UpdateSensors();
-
-            foreach (HwInfoSensor item in _sensors)
-            {
-                if (_cache.TryGetValue(item.Id, out DynamicChild<SensorDynamicDataModel> child))
-                {
-                    child.Value.CurrentValue = item.Value;
-                    child.Value.Average = item.ValueAvg;
-                    child.Value.Minimum = item.ValueMin;
-                    child.Value.Maximum = item.ValueMax;
-                }
-            }
-        }
-
-        private void PopulateDynamicDataModels()
-        {
-            for (int i = 0; i < _hardwares.Length; i++)
-            {
-                HwInfoHardware hw = _hardwares[i];
-
-                IEnumerable<HwInfoSensor> children = _sensors.Where(re => re.ParentIndex == i);
-
-                if (!children.Any())
-                    continue;
-
-                HardwareDynamicDataModel hardwareDataModel = DataModel.AddDynamicChild(
-                    hw.GetId(),
-                    new HardwareDynamicDataModel(),
-                    hw.NameCustom,
-                    hw.NameOriginal
-                ).Value;
-
-                foreach (IGrouping<HwInfoSensorType, HwInfoSensor> sensorsOfType in children.GroupBy(s => s.SensorType))
-                {
-                    SensorTypeDynamicDataModel sensorTypeDataModel = hardwareDataModel.AddDynamicChild(
-                        sensorsOfType.Key.ToString(),
-                        new SensorTypeDynamicDataModel()
-                    ).Value;
-
-                    //this will make it so the ids are something like:
-                    //load1, load2, temperature1, temperature2
-                    //which should be somewhat portable i guess
-                    int sensorOfTypeIndex = 0;
-                    foreach (HwInfoSensor sensor in sensorsOfType.OrderBy(s => s.LabelOriginal))
-                    {
-                        DynamicChild<SensorDynamicDataModel> dataModel = sensorTypeDataModel.AddDynamicChild(
-                            $"{sensorsOfType.Key.ToString().ToLower()}{sensorOfTypeIndex++}",
-                            new SensorDynamicDataModel(),
-                            sensor.LabelCustom,
-                            sensor.LabelOriginal
-                        );
-
-                        _cache.Add(sensor.Id, dataModel);
-                    }
-                }
-            }
-        }
-
-        private void UpdateHardwares()
-        {
-            _hardwareStream.Seek(0, System.IO.SeekOrigin.Begin);
-
-            for (int i = 0; i < _hwInfoRoot.HardwareCount; i++)
-            {
-                _hardwareStream.Read(_hardwareBuffer, 0, _hardwareBuffer.Length);
-
-                _hardwares[i] = BytesToStruct<HwInfoHardware>(_hardwareBuffer);
-            }
-        }
-
-        private void UpdateSensors()
-        {
-            _sensorStream.Seek(0, SeekOrigin.Begin);
-
-            for (int i = 0; i < _hwInfoRoot.SensorCount; i++)
-            {
-                _sensorStream.Read(_sensorBuffer, 0, _sensorBuffer.Length);
-
-                _sensors[i] = BytesToStruct<HwInfoSensor>(_sensorBuffer);
-            }
-        }
-
-        private static T BytesToStruct<T>(byte[] bytes) where T : struct
-        {
-            T result;
-
-            GCHandle handle = GCHandle.Alloc(bytes, GCHandleType.Pinned);
             try
             {
-                result = (T)Marshal.PtrToStructure(handle.AddrOfPinnedObject(), typeof(T));
-            }
-            finally
-            {
-                handle.Free();
-            }
+                _reader = new HwInfo64Reader();
+                var hwInfoData = _reader.ReadRoot();
+                
+                if (hwInfoData.Version != 2)
+                    throw new ArtemisPluginException("HWiNFO64 protocol version is not 2, please update HWiNFO64 to the latest version");
+                
+                _hardwares = new HwInfoHardware[hwInfoData.HardwareCount];
+                _sensors = new HwInfoSensor[hwInfoData.SensorCount];
+                _sensorDataModels = new SensorDataModel[hwInfoData.SensorCount];
+                
+                PopulateDynamicDataModels();
 
-            return result;
+                _timedUpdate?.Dispose();
+
+                _timedUpdate = AddTimedUpdate(TimeSpan.FromMilliseconds(hwInfoData.PollingPeriod), UpdateSensorsAndDataModel, nameof(UpdateSensorsAndDataModel));
+
+                started = true;
+                _logger.Information("Started HWiNFO64 memory reader successfully");
+                return;
+            }
+            catch (FileNotFoundException e1)
+            {
+                _logger.Error(e1, "Failed to start HWiNFO64 memory reader. Retrying...");
+                Thread.Sleep(500);
+            }
+            catch (ArtemisPluginException e2)
+            {
+                _logger.Error(e2, "Failed to start HWiNFO64 memory reader. Please update HWiNFO64 to the latest version.");
+                break;
+            }
+            catch (Exception e3)
+            {
+                _logger.Error(e3, "Exception reading HWInfo structure, please show developers.");
+                break;
+            }
+        }
+
+        if (!started)
+            throw new ArtemisPluginException("Could not find the HWiNFO64 memory mapped file");
+    }
+
+    public override void ModuleDeactivated(bool isOverride)
+    {
+        _reader?.Dispose();
+        _sensors = null;
+        _hardwares = null;
+        _sensorDataModels = null;
+    }
+
+    public override void Enable() { }
+
+    public override void Disable() { }
+
+    public override void Update(double deltaTime)
+    {
+        //updates are done only as often as HWiNFO64 polls to save resources.
+    }
+
+    private void UpdateSensorsAndDataModel(double deltaTime)
+    {
+        _reader.ReadSensors(_sensors);
+
+        for (var index = 0; index < _sensors.Length; index++)
+        {
+            var dataModel = _sensorDataModels[index];
+            var sensor = _sensors[index];
+
+            dataModel.CurrentValue = sensor.Value;
+            dataModel.Average = sensor.ValueAvg;
+            dataModel.Minimum = sensor.ValueMin;
+            dataModel.Maximum = sensor.ValueMax;
+        }
+    }
+
+    private void PopulateDynamicDataModels()
+    {
+        _reader.ReadHardwares(_hardwares);
+        _reader.ReadSensors(_sensors);
+        
+        var sensorsWithIndex = _sensors
+            .Select((s, idx) => (Sensor: s, Index: idx))
+            .ToArray();
+
+        for (var i = 0; i < _hardwares.Length; i++)
+        {
+            var hw = _hardwares[i];
+
+            var childrenWithIndex = sensorsWithIndex
+                .Where(s => s.Sensor.ParentIndex == i)
+                .ToArray();
+
+            if (!childrenWithIndex.Any())
+                continue;
+
+            var hardwareDataModel = DataModel.AddDynamicChild(
+                hw.GetId(),
+                new HardwareDataModel(),
+                hw.NameCustomUtf8,
+                hw.NameOriginal
+            ).Value;
+
+            foreach (var sensorsOfType in childrenWithIndex.GroupBy(s => s.Sensor.SensorType))
+            {
+                var sensorTypeDataModel = hardwareDataModel.AddDynamicChild(
+                    sensorsOfType.Key.ToString(),
+                    new SensorTypeDataModel()
+                ).Value;
+
+                //this will make it so the ids are something like:
+                //load1, load2, temperature1, temperature2
+                //which should be somewhat portable i guess
+                var sensorOfTypeIndex = 0;
+                foreach (var (sensor, index) in sensorsOfType.OrderBy(s => s.Sensor.LabelOriginal.ToString()))
+                {
+                    var dataModel = sensorTypeDataModel.AddDynamicChild(
+                        $"{sensorsOfType.Key.ToString().ToLower()}{sensorOfTypeIndex++}",
+                        new SensorDataModel(),
+                        sensor.LabelCustomUtf8,
+                        sensor.LabelOriginal
+                    );
+
+                    _sensorDataModels[index] = dataModel.Value;
+                }
+            }
         }
     }
 }
