@@ -15,12 +15,12 @@ public class HwInfoModule : Module<HwInfoDataModel>
 {
     private readonly ILogger _logger;
 
-    private HwInfo64Reader _reader;    
+    private HwInfo64Reader _reader;
     private HwInfoHardware[] _hardwares;
     private HwInfoSensor[] _sensors;
-    
+
     private SensorDataModel[] _sensorDataModels;
-    
+
     private TimedUpdateRegistration _timedUpdate;
     public override List<IModuleActivationRequirement> ActivationRequirements { get; } = new() { new ProcessActivationRequirement("HWiNFO64") };
 
@@ -34,53 +34,38 @@ public class HwInfoModule : Module<HwInfoDataModel>
     {
         if (isOverride)
             return;
-
-        const int MAX_RETRIES = 10;
-        var started = false;
-
-        for (var i = 0; i < MAX_RETRIES; i++)
+        
+        try
         {
-            try
+            _reader = new HwInfo64Reader();
+            var hwInfoData = _reader.ReadRoot();
+
+            if (hwInfoData.Version != 2)
             {
-                _reader = new HwInfo64Reader();
-                var hwInfoData = _reader.ReadRoot();
-                
-                if (hwInfoData.Version != 2)
-                    throw new ArtemisPluginException("HWiNFO64 protocol version is not 2, please update HWiNFO64 to the latest version");
-                
-                _hardwares = new HwInfoHardware[hwInfoData.HardwareCount];
-                _sensors = new HwInfoSensor[hwInfoData.SensorCount];
-                _sensorDataModels = new SensorDataModel[hwInfoData.SensorCount];
-                
-                PopulateDynamicDataModels();
-
-                _timedUpdate?.Dispose();
-
-                _timedUpdate = AddTimedUpdate(TimeSpan.FromMilliseconds(hwInfoData.PollingPeriod), UpdateSensorsAndDataModel, nameof(UpdateSensorsAndDataModel));
-
-                started = true;
-                _logger.Information("Started HWiNFO64 memory reader successfully");
+                _logger.Error("HWiNFO64 protocol version is not 2, please update HWiNFO64 to the latest version");
                 return;
             }
-            catch (FileNotFoundException e1)
-            {
-                _logger.Error(e1, "Failed to start HWiNFO64 memory reader. Retrying...");
-                Thread.Sleep(500);
-            }
-            catch (ArtemisPluginException e2)
-            {
-                _logger.Error(e2, "Failed to start HWiNFO64 memory reader. Please update HWiNFO64 to the latest version.");
-                break;
-            }
-            catch (Exception e3)
-            {
-                _logger.Error(e3, "Exception reading HWInfo structure, please show developers.");
-                break;
-            }
-        }
 
-        if (!started)
-            throw new ArtemisPluginException("Could not find the HWiNFO64 memory mapped file");
+            _hardwares = new HwInfoHardware[hwInfoData.HardwareCount];
+            _sensors = new HwInfoSensor[hwInfoData.SensorCount];
+            _sensorDataModels = new SensorDataModel[hwInfoData.SensorCount];
+
+            PopulateDynamicDataModels();
+
+            _timedUpdate?.Dispose();
+
+            _timedUpdate = AddTimedUpdate(TimeSpan.FromMilliseconds(hwInfoData.PollingPeriod), UpdateSensorsAndDataModel, nameof(UpdateSensorsAndDataModel));
+
+            _logger.Verbose("Started HWiNFO64 memory reader successfully");
+        }
+        catch (FileNotFoundException e1)
+        {
+            _logger.Error(e1, "Failed to start HWiNFO64 memory reader. Make sure the \"Shared Memory Support\" option is enabled in HWiNFO64 settings and restart this plugin.");
+        }
+        catch (Exception e3)
+        {
+            _logger.Error(e3, "Exception reading HWInfo structure, please show developers.");
+        }
     }
 
     public override void ModuleDeactivated(bool isOverride)
@@ -91,9 +76,13 @@ public class HwInfoModule : Module<HwInfoDataModel>
         _sensorDataModels = null;
     }
 
-    public override void Enable() { }
+    public override void Enable()
+    {
+    }
 
-    public override void Disable() { }
+    public override void Disable()
+    {
+    }
 
     public override void Update(double deltaTime)
     {
@@ -120,7 +109,7 @@ public class HwInfoModule : Module<HwInfoDataModel>
     {
         _reader.ReadHardwares(_hardwares);
         _reader.ReadSensors(_sensors);
-        
+
         var sensorsWithIndex = _sensors
             .Select((s, idx) => (Sensor: s, Index: idx))
             .ToArray();

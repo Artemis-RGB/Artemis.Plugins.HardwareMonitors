@@ -33,36 +33,20 @@ namespace Artemis.Plugins.HardwareMonitors.Aida64
         public override void ModuleActivated(bool isOverride)
         {
             if (isOverride)
-            {
                 return;
-            }
-
-            const int maxRetries = 10;
-            bool started = false;
-
-            for (int i = 0; i < maxRetries; i++)
+            
+            try
             {
-                try
-                {
-                    memoryMappedFile = MemoryMappedFile.OpenExisting("AIDA64_SensorValues", MemoryMappedFileRights.Read);
-                    rootStream = memoryMappedFile.CreateViewStream(
-                        0,
-                        0,
-                        MemoryMappedFileAccess.Read);
-                    _aidaElements = new List<AidaElement>();
-                    started = true;
-                    return;
-                }
-                catch
-                {
-                    _logger.Error("Failed to start AIDA64 memory reader. Retrying...");
-                    Thread.Sleep(500);
-                }
+                memoryMappedFile = MemoryMappedFile.OpenExisting("AIDA64_SensorValues", MemoryMappedFileRights.Read);
+                rootStream = memoryMappedFile.CreateViewStream(
+                    0,
+                    0,
+                    MemoryMappedFileAccess.Read);
+                _aidaElements = new List<AidaElement>();
             }
-
-            if (!started)
+            catch
             {
-                throw new ArtemisPluginException("Could not find the aida64 memory mapped file");
+                _logger.Error("Failed to start AIDA64 memory reader. Make sure the shared memory option is enabled in AIDA64 and restart this plugin.");
             }
         }
 

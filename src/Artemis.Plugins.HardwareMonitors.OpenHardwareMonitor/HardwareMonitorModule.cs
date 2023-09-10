@@ -52,9 +52,7 @@ namespace Artemis.Plugins.HardwareMonitors.OpenHardwareMonitor
         public override void ModuleActivated(bool isOverride)
         {
             if (isOverride)
-            {
                 return;
-            }
 
             //hack: all the data takes a moment to apper.
             //we need to wait for a moment so the app has time to
@@ -103,15 +101,14 @@ namespace Artemis.Plugins.HardwareMonitors.OpenHardwareMonitor
                 _logger.Information($"Successfully connected to WMI scope: {scope}");
                 return;
             }
-            throw new ArtemisPluginException("Could not find hardware monitor WMI scope with data");
+
+            _logger.Error("Could not connect to any WMI scope.");
         }
 
         public override void ModuleDeactivated(bool isOverride)
         {
             if (isOverride)
-            {
                 return;
-            }
 
             _cache.Clear();
             SensorSearcher?.Dispose();
