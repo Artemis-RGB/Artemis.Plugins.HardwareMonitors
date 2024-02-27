@@ -1,15 +1,21 @@
 using System;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
-using UnmanagedArrayGenerator;
 
 namespace Artemis.Plugins.HardwareMonitors.HWiNFO64;
 
-[UnmanagedArray(typeof(byte), 128)]
-public readonly partial struct HwInfoString128 { }
+[InlineArray(128)]
+public struct HwInfoString128
+{
+    private byte field0;
+}
 
-[UnmanagedArray(typeof(byte), 16)]
-public readonly partial struct HwInfoString16 { }
+[InlineArray(16)]
+public struct HwInfoString16
+{
+    private byte field0;
+}
 
 [StructLayout(LayoutKind.Sequential, Pack = 1)]
 public readonly struct HwInfoString128Ascii
@@ -20,7 +26,7 @@ public readonly struct HwInfoString128Ascii
     {
         var sb = new StringBuilder();
 
-        foreach (ref readonly var c in _str.AsSpan())
+        foreach (ref readonly var c in _str)
         {
             //ascii only
             if (c == 0)
@@ -42,7 +48,7 @@ public readonly struct HwInfoString128Utf8
     
     public override string ToString()
     {
-        var bytes = _str.AsSpan();
+        ReadOnlySpan<byte> bytes = _str;
         
         var endOfString = bytes.LastIndexOfAnyExcept((byte)0);
         //i'm assuming any contiguous zeroes after are null-terminators.
@@ -62,7 +68,7 @@ public readonly struct HwInfoString16Ascii
     {
         var sb = new StringBuilder();
         
-        foreach (ref readonly var c in _str.AsSpan())
+        foreach (ref readonly var c in _str)
         {
             //ascii only
             if (c == 0)
@@ -84,7 +90,7 @@ public readonly struct HwInfoString16Utf8
     
     public override string ToString()
     {
-        var bytes = _str.AsSpan();
+        ReadOnlySpan<byte> bytes = _str;
         
         var endOfString = bytes.LastIndexOfAnyExcept((byte)0);
         //i'm assuming any contiguous zeroes after are null-terminators.
