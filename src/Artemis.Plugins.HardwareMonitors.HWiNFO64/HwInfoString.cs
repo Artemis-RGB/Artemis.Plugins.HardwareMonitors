@@ -8,13 +8,13 @@ namespace Artemis.Plugins.HardwareMonitors.HWiNFO64;
 [InlineArray(128)]
 public struct HwInfoString128
 {
-    private byte field0;
+    private byte _field;
 }
 
 [InlineArray(16)]
 public struct HwInfoString16
 {
-    private byte field0;
+    private byte _field;
 }
 
 [StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -38,7 +38,7 @@ public readonly struct HwInfoString128Ascii
         return sb.ToString();
     }
 
-    public static implicit operator string(HwInfoString128Ascii str) => str.ToString();
+    public static implicit operator string(in HwInfoString128Ascii str) => str.ToString();
 }
 
 [StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -56,7 +56,7 @@ public readonly struct HwInfoString128Utf8
         return Encoding.UTF8.GetString(bytes[..(endOfString + 1)]);
     }
     
-    public static implicit operator string(HwInfoString128Utf8 str) => str.ToString();
+    public static implicit operator string(in HwInfoString128Utf8 str) => str.ToString();
 }
 
 [StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -80,7 +80,7 @@ public readonly struct HwInfoString16Ascii
         return sb.ToString();
     }
 
-    public static implicit operator string(HwInfoString16Ascii str) => str.ToString();
+    public static implicit operator string(in HwInfoString16Ascii str) => str.ToString();
 }
 
 [StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -98,5 +98,5 @@ public readonly struct HwInfoString16Utf8
         return Encoding.UTF8.GetString(bytes[..(endOfString + 1)]);
     }
     
-    public static implicit operator string(HwInfoString16Utf8 str) => str.ToString();
+    public static implicit operator string(in HwInfoString16Utf8 str) => str.ToString();
 }
