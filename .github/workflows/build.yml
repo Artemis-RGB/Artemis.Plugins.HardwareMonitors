@@ -4,43 +4,18 @@ on: [push, pull_request]
 
 jobs:
   build:
-    runs-on: [windows-latest]
+    runs-on: ubuntu-latest
 
     steps:
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: "8.0.x"
-
       - name: Clone Plugins
         uses: actions/checkout@v4
 
       - name: Build Plugins
-        run: dotnet publish -c Release src/Artemis.Plugins.HardwareMonitors.sln
+        run: dotnet publish -c Release src
 
-        #msbuild is dumb so we have to upload one at a time :)
-        #https://github.com/dotnet/sdk/issues/7238
+      - name: Install Plugin Uploader
+        run: dotnet tool install ArtemisRGB.Tools.PluginUploader --global
 
-      - name: Upload Aida64
-        uses: actions/upload-artifact@v4
-        with:
-          name: Aida64
-          path: src/Artemis.Plugins.HardwareMonitors.Aida64/bin/x64/Release/net8.0/publish
-
-      - name: Upload HWiNFO64
-        uses: actions/upload-artifact@v4
-        with:
-          name: HWiNFO64
-          path: src/Artemis.Plugins.HardwareMonitors.HWiNFO64/bin/x64/Release/net8.0/publish
-
-      - name: Upload OpenHardwareMonitor
-        uses: actions/upload-artifact@v4
-        with:
-          name: OpenHardwareMonitor
-          path: src/Artemis.Plugins.HardwareMonitors.OpenHardwareMonitor/bin/x64/Release/net8.0/publish
-
-      - name: Upload Standalone
-        uses: actions/upload-artifact@v4
-        with:
-          name: Standalone
-          path: src/Artemis.Plugins.HardwareMonitors.Standalone/bin/x64/Release/net8.0-windows/publish
+      - name: Upload
+        if: github.ref == 'refs/heads/master'
+        run: artemis-plugin-uploader upload-all --pat ${{ secrets.WORKSHOP_PAT }} --folder src
