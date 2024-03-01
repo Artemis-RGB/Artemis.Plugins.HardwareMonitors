@@ -1,7 +1,8 @@
 # Artemis.Plugins.HardwareMonitors
 Repository containing hardware monitoring plugins
 
-# [Download link](https://nightly.link/Artemis-RGB/Artemis.Plugins.HardwareMonitors/workflows/build/master)
+# Download
+These plugins can be downloaded through the Artemis in-app workshop.
 
 ## Supported methods of monitoring
 
