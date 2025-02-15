@@ -6,7 +6,7 @@
   "Icon": "Chip",
   "RequiresAdmin": true,
   "Description": "Provides hardware statistics like load, voltage and temperature for system components. Standalone, but requires admin privileges",
-  "Version": "1.0.0.1",
+  "Version": "1.0.0.2",
   "Main": "Artemis.Plugins.HardwareMonitors.Standalone.dll",
   "Platforms": "Windows"
 }
