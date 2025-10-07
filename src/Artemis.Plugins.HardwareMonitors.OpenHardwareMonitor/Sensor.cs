@@ -16,6 +16,12 @@ namespace Artemis.Plugins.HardwareMonitors.OpenHardwareMonitor
 
         public static Sensor FromManagementObject(ManagementBaseObject obj)
         {
+            SensorType sensorType;
+            if (!Enum.TryParse<SensorType>((string)obj[nameof(SensorType)], out sensorType))
+            {
+                sensorType = SensorType.Other;
+            }
+
             return new Sensor
             {
                 Identifier = (string)obj[nameof(Identifier)],
@@ -24,7 +30,7 @@ namespace Artemis.Plugins.HardwareMonitors.OpenHardwareMonitor
                 Value = (float)obj[nameof(Value)],
                 Name = (string)obj[nameof(Name)],
                 Parent = (string)obj[nameof(Parent)],
-                SensorType = Enum.Parse<SensorType>((string)obj[nameof(SensorType)])
+                SensorType = sensorType
             };
         }
 
@@ -93,6 +99,8 @@ namespace Artemis.Plugins.HardwareMonitors.OpenHardwareMonitor
         Throughput, // B/s
         TimeSpan, // Seconds 
         Energy, // milliwatt-hour (mWh)
-        Noise // dBA
+        Noise, // dBA
+        Conductivity, // µS/cm
+        Other
     }
 }

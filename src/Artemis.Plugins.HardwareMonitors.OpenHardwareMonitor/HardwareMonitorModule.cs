@@ -1,11 +1,12 @@
-﻿using Artemis.Core;
-using Artemis.Core.Modules;
-using Serilog;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Management;
 using System.Threading;
+using Artemis.Core;
+using Artemis.Core.Modules;
+using DryIoc.ImTools;
+using Serilog;
 
 namespace Artemis.Plugins.HardwareMonitors.OpenHardwareMonitor
 {
@@ -20,26 +21,22 @@ namespace Artemis.Plugins.HardwareMonitors.OpenHardwareMonitor
             @"\\.\root\OpenHardwareMonitor"
         };
 
-        private readonly ObjectQuery SensorQuery = new ObjectQuery("SELECT * FROM Sensor");
-        private readonly ObjectQuery HardwareQuery = new ObjectQuery("SELECT * FROM Hardware");
-
-        private ManagementScope HardwareMonitorScope;
-        private ManagementObjectSearcher SensorSearcher;
-        private ManagementObjectSearcher HardwareSearcher;
-
+        private WmiUpdater _updater;
         private readonly Dictionary<string, DynamicChild<SensorDynamicDataModel>> _cache = new();
 
         public override List<IModuleActivationRequirement> ActivationRequirements { get; } = new()
         {
-            new ProcessActivationRequirement("OpenHardwareMonitor"),
-            new ProcessActivationRequirement("LibreHardwareMonitor")
+            new HardwareMonitorActivationRequirement(@"\\.\root\OpenHardwareMonitor", "OpenHardwareMonitor"),
+            new HardwareMonitorActivationRequirement(@"\\.\root\LibreHardwareMonitor", "LibreHardwareMonitor")
         };
 
         public HardwareMonitorModule(ILogger logger)
         {
             _logger = logger;
+
             ActivationRequirementMode = ActivationRequirementType.Any;
             UpdateDuringActivationOverride = false;
+
             AddTimedUpdate(TimeSpan.FromMilliseconds(500), UpdateSensorsAndDataModel, nameof(UpdateSensorsAndDataModel));
         }
 
@@ -51,23 +48,23 @@ namespace Artemis.Plugins.HardwareMonitors.OpenHardwareMonitor
 
         public override void ModuleActivated(bool isOverride)
         {
+            _logger.Information("Activate OpenHardwareMonitor Plugin");
+
             if (isOverride)
                 return;
 
-            //hack: all the data takes a moment to apper.
-            //we need to wait for a moment so the app has time to
-            //publish data to WMI
-            Thread.Sleep(2000);
             foreach (string scope in Scopes)
             {
+                WmiUpdater updater;
+
                 try
                 {
-                    HardwareMonitorScope = new ManagementScope(scope, null);
-                    HardwareMonitorScope.Connect();
+                    updater = new WmiUpdater(scope);
                 }
                 catch
                 {
                     _logger.Warning($"Could not connect to WMI scope: {scope}");
+
                     //if the connection to one of the scopes fails,
                     //ignore the exception and try the other one.
                     //this way both Open and Libre HardwareMonitors
@@ -76,29 +73,34 @@ namespace Artemis.Plugins.HardwareMonitors.OpenHardwareMonitor
                     continue;
                 }
 
-                HardwareSearcher = new ManagementObjectSearcher(HardwareMonitorScope, HardwareQuery);
-                SensorSearcher = new ManagementObjectSearcher(HardwareMonitorScope, SensorQuery);
-
-                List<Hardware> hardwares = Hardware.FromCollection(HardwareSearcher.Get());
-                List<Sensor> sensors = Sensor.FromCollection(SensorSearcher.Get());
-
-                if (hardwares.Count == 0 || sensors.Count == 0)
-                {
-                    _logger.Warning($"Connected to WMI scope \"{scope}\" but it did not contain any data.");
-                    continue;
-                }
-
                 try
-                {                
+                {
+                    var sensors = updater.FetchSensors();
+                    var hardwares = updater.FetchHardwares();
+
+                    if (sensors.Count == 0 || hardwares.Count == 0)
+                    {
+                        _logger.Warning($"Connected to WMI scope \"{scope}\" but it did not contain any data.");
+
+                        updater.Dispose();
+
+                        continue;
+                    }
+
                     PopulateDynamicDataModels(hardwares, sensors);
                 }
                 catch (Exception e)
                 {
+                    updater.Dispose();
+
                     _logger.Error(e, "Error while populating dynamic data models");
+
                     return;
                 }
 
                 _logger.Information($"Successfully connected to WMI scope: {scope}");
+                _updater = updater;
+
                 return;
             }
 
@@ -107,12 +109,18 @@ namespace Artemis.Plugins.HardwareMonitors.OpenHardwareMonitor
 
         public override void ModuleDeactivated(bool isOverride)
         {
+            _logger.Information("Deactivate OpenHardwareMonitor Plugin");
+
             if (isOverride)
                 return;
 
+            if (_updater != null)
+            {
+                _updater.Dispose();
+                _updater = null;
+            }
+
             _cache.Clear();
-            SensorSearcher?.Dispose();
-            HardwareSearcher?.Dispose();
             DataModel.ClearDynamicChildren();
         }
 
@@ -195,7 +203,7 @@ namespace Artemis.Plugins.HardwareMonitors.OpenHardwareMonitor
 
         private void UpdateSensorsAndDataModel(double deltaTime)
         {
-            foreach (Sensor sensor in Sensor.FromCollectionFast(SensorSearcher.Get()))
+            foreach (Sensor sensor in _updater.FetchSensors())
             {
                 if (_cache.TryGetValue(sensor.Identifier, out DynamicChild<SensorDynamicDataModel> dynamicChild))
                 {
