@@ -5,7 +5,7 @@
   "Author": "diogotr7",
   "Icon": "Chip",
   "Description": "Provides hardware statistics like load, voltage and temperature for system components. Requires Aida64 to be running in the background.",
-  "Version": "1.0.0.1",
+  "Version": "1.0.0.2",
   "Main": "Artemis.Plugins.HardwareMonitors.Aida64.dll",
   "Platforms": "Windows"
 }
